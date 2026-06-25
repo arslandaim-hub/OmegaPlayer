@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Omega Symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,82 L46,82 C46,82 36,36 54,36 C72,36 62,82 62,82 L78,82 L78,74 L68,74 C68,74 74,44 54,44 C34,44 40,74 40,74 L30,74 Z" />
+
+    <!-- Play Icon inside Omega -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,48 L66,58 L48,68 Z" />
+
+</vector>
