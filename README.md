@@ -14,6 +14,9 @@ Application has no internet connectivity at all, everything is ad free and no tr
   Zoom & Aspect Ratio: Toggle between Fit, Stretch, and Zoom modes instantly.
   Background Play: Keep listening to your videos even when the screen is off.
 
+<img src= "C:\Users\AK\Pictures\Camera Roll\WhatsApp Image 2026-07-01 at 7.07.26 PM.jpeg"
+width="300">
+
  #### PREMIUM AUDIO EXPERIENCE
  
   High-Fidelity Playback: Supports all popular audio formats (MP3, FLAC, WAV, etc.).
