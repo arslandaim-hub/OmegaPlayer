@@ -14,11 +14,11 @@ Application has no internet connectivity at all, everything is ad free and no tr
   Zoom & Aspect Ratio: Toggle between Fit, Stretch, and Zoom modes instantly.
   Background Play: Keep listening to your videos even when the screen is off.
 
-<img src= "fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (2).jpeg private vault"
+<img src= "fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (1).jpeg"
 width="150">
-<img src= "fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM.jpeg settings"
+<img src= "fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (3).jpeg"
 width="150">
-<img src= "fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (3).jpeg home"
+<img src= "fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (2).jpeg"
 width="150">
 
  #### PREMIUM AUDIO EXPERIENCE
