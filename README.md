@@ -9,7 +9,7 @@ Application has no internet connectivity at all, everything is ad free and no tr
 #### SILKY SMOOTH VIDEO PLAYBACK
 
   Optimized for large files: Open 4K and Ultra HD videos without lag.
-  Advanced Buffering: Zero-stutter playback with smart loading technology.
+  Advanced Buffering: Zero-shutter playback with smart loading technology.
   Gesture Controls: Swipe left for brightness, right for volume, and horizontal to seek.
   Zoom & Aspect Ratio: Toggle between Fit, Stretch, and Zoom modes instantly.
   Background Play: Keep listening to your videos even when the screen is off.
