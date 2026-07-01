@@ -2,7 +2,7 @@
 
 
 OmegaPlayer is a multimedia player for Android. It combines a high-performance video engine with a sophisticated music player and a secure private vault to protect your personal media. 
-Application has no internet connectivity at all, everything is ad free and no trackers whatsoever.
+Application is completely offline.
 
 ### Key Features:
 
