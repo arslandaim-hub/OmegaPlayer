@@ -1,1 +1,3 @@
-OmegaPlayer provides smooth video playing experience with smooth modern gesture controls. Player has no ads, tracking whatsoever and high-fidelity music player with a private vault.
+Better and easier video playback
+Modern Music player
+Private Vault with biometric
