@@ -14,10 +14,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yourusername/OmegaPlayer">
+  <a href="https://github.com/arslandaim-hub/OmegaPlayer/releases/latest">
     <img src="https://img.shields.io/badge/Get%20it%20on-GitHub-181717?style=for-the-badge&logo=github" alt="GitHub">
   </a>
-  <a href="https://f-droid.org/packages/your.package.name/">
+  <a href="https://f-droid.org/packages/com.arslandaim.omegaplayer/">
     <img src="https://img.shields.io/badge/Get%20it%20on-F--Droid-1976D2?style=for-the-badge&logo=f-droid" alt="F-Droid">
   </a>
 </p>
