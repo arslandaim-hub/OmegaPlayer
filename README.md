@@ -6,7 +6,7 @@
 
 <p align="center">
   A modern, offline multimedia player for Android featuring a powerful video player,
-  high-quality music player, and a secure private vault.
+  music player, and a secure private vault.
 </p>
 
 <p align="center">
@@ -77,4 +77,3 @@
  -  Completely Offline
  -  No Ads
  -  No Trackers
- -  Free & Open Source
