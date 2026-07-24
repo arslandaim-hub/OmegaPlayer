@@ -107,8 +107,8 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         if (currentUri == audio.uri.toString()) {
             if (controller.isPlaying) controller.pause() else controller.play()
         } else {
-            val allAudios = _audios.value
-            val mediaItems = allAudios.map { audioItem ->
+            val folderAudios = audiosInSelectedFolder.value
+            val mediaItems = folderAudios.map { audioItem ->
                 val albumArtUri = ContentUris.withAppendedId(
                     Uri.parse("content://media/external/audio/albumart"),
                     audioItem.albumId
@@ -126,7 +126,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                     )
                     .build()
             }
-            val index = allAudios.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
+            val index = folderAudios.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
             
             if (mediaItems.isNotEmpty()) {
                 controller.setMediaItems(mediaItems, index, 0L)
@@ -162,6 +162,28 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
         if (_audios.value.isNotEmpty() && !_isLoading.value) return
         fetchAudiosInternal(context)
+    }
+
+    fun stopIfPlaying(uri: Uri) {
+        _mediaController.value?.let { controller ->
+            val currentUri = controller.currentMediaItem?.localConfiguration?.uri
+            if (currentUri == uri) {
+                controller.stop()
+                controller.clearMediaItems()
+                _activeAudioUri.value = null
+            }
+        }
+    }
+
+    fun stopIfPlaying(uris: List<Uri>) {
+        _mediaController.value?.let { controller ->
+            val currentUri = controller.currentMediaItem?.localConfiguration?.uri
+            if (currentUri != null && uris.contains(currentUri)) {
+                controller.stop()
+                controller.clearMediaItems()
+                _activeAudioUri.value = null
+            }
+        }
     }
 
     fun refreshAudios(context: Context) {

@@ -58,6 +58,7 @@ import com.arslandaim.omegaplayer.viewmodel.VideoViewModel
 import com.arslandaim.omegaplayer.viewmodel.AudioViewModel
 import com.arslandaim.omegaplayer.viewmodel.ThemeViewModel
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
+import com.arslandaim.omegaplayer.viewmodel.StorageViewModel
 import com.arslandaim.omegaplayer.ui.player.AudioPlayerScreen
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
@@ -75,6 +76,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             val videoViewModel: VideoViewModel = viewModel()
             val audioViewModel: AudioViewModel = viewModel()
+            val storageViewModel: StorageViewModel = viewModel()
             val themeViewModel: ThemeViewModel = viewModel()
             val lockerViewModel: LockerViewModel = viewModel()
             val appTheme by themeViewModel.theme.collectAsState()
@@ -142,6 +144,7 @@ class MainActivity : FragmentActivity() {
                                 MainScreen(
                                     videoViewModel, 
                                     audioViewModel,
+                                    storageViewModel,
                                     lockerViewModel,
                                     navController,
                                     sharedTransitionScope = this@SharedTransitionLayout,
@@ -234,6 +237,7 @@ class MainActivity : FragmentActivity() {
 fun MainScreen(
     videoViewModel: VideoViewModel,
     audioViewModel: AudioViewModel,
+    storageViewModel: StorageViewModel,
     lockerViewModel: LockerViewModel,
     navController: NavHostController,
     sharedTransitionScope: SharedTransitionScope,
@@ -348,6 +352,7 @@ fun MainScreen(
                 0 -> HomeScreen(
                     viewModel = videoViewModel,
                     audioViewModel = audioViewModel,
+                    storageViewModel = storageViewModel,
                     lockerViewModel = lockerViewModel,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,

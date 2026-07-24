@@ -7,6 +7,7 @@
 package com.arslandaim.omegaplayer.ui.settings
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -61,6 +62,21 @@ fun SettingsScreen(
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
+
+    val versionName = remember {
+        try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0)
+            }
+            packageInfo.versionName
+        } catch (_: Exception) {
+            "1.4.2"
+        }
+    }
+
     val dao = remember { LockerDatabase.getDatabase(context).lockerDao() }
     val themeViewModel: ThemeViewModel = viewModel()
     val currentTheme by themeViewModel.theme.collectAsState()
@@ -337,7 +353,7 @@ fun SettingsScreen(
             
             // Version Info
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("Omega Player v:1.4.2", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Omega Player v:$versionName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 

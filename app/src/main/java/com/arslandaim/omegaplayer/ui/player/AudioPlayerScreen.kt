@@ -54,9 +54,24 @@ fun AudioPlayerScreen(
 
     val context = LocalContext.current
     val controller by viewModel.mediaController.collectAsStateWithLifecycle()
-    val audios by viewModel.audios.collectAsStateWithLifecycle()
+    val globalAudios by viewModel.audios.collectAsStateWithLifecycle()
+    val selectedFolder by viewModel.selectedFolder.collectAsStateWithLifecycle()
+    val audios by viewModel.audiosInSelectedFolder.collectAsStateWithLifecycle()
     
-    var currentAudio by remember { mutableStateOf(audios.find { it.uri.toString() == audioUri }) }
+    var currentAudio by remember { mutableStateOf(globalAudios.find { it.uri.toString() == audioUri }) }
+
+    LaunchedEffect(globalAudios, audioUri) {
+        if (selectedFolder == null && globalAudios.isNotEmpty()) {
+            val audio = globalAudios.find { it.uri.toString() == audioUri }
+            audio?.let {
+                val folderName = java.io.File(it.path).parentFile?.name ?: "Internal"
+                viewModel.setSelectedFolder(folderName)
+            }
+        }
+        if (currentAudio == null) {
+            currentAudio = globalAudios.find { it.uri.toString() == audioUri }
+        }
+    }
 
     var isPlaying by remember { mutableStateOf(controller?.isPlaying ?: false) }
     var currentPosition by remember { mutableStateOf(controller?.currentPosition ?: 0L) }
@@ -309,13 +324,21 @@ fun AudioPlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = {
-                            val nextMode = if (repeatMode == Player.REPEAT_MODE_OFF) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+                            val nextMode = when (repeatMode) {
+                                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                                else -> Player.REPEAT_MODE_OFF
+                            }
                             player.repeatMode = nextMode
                         }) {
                             Icon(
-                                if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                                when (repeatMode) {
+                                    Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                                    Player.REPEAT_MODE_ALL -> Icons.Default.Repeat
+                                    else -> Icons.Default.Repeat
+                                },
                                 contentDescription = "Repeat",
-                                tint = if (repeatMode == Player.REPEAT_MODE_ONE) Color(0xFFFF6600) else Color.White.copy(alpha = 0.7f)
+                                tint = if (repeatMode != Player.REPEAT_MODE_OFF) Color(0xFFFF6600) else Color.White.copy(alpha = 0.7f)
                             )
                         }
 

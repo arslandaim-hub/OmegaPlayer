@@ -8,6 +8,7 @@ package com.arslandaim.omegaplayer.ui.home
 
 import android.Manifest
 import android.app.Activity
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -18,6 +19,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -59,6 +61,9 @@ import com.arslandaim.omegaplayer.data.AudioModel
 import com.arslandaim.omegaplayer.viewmodel.AudioViewModel
 import com.arslandaim.omegaplayer.viewmodel.VideoViewModel
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.arslandaim.omegaplayer.viewmodel.StorageStats
+import com.arslandaim.omegaplayer.viewmodel.StorageViewModel
 import com.arslandaim.omegaplayer.ui.locker.MoveToLockerResult
 import com.arslandaim.omegaplayer.ui.locker.bulkPrepareMoveToLocker
 import com.arslandaim.omegaplayer.ui.locker.bulkPrepareAudioMoveToLocker
@@ -135,11 +140,134 @@ fun ModernOmegaIcon(modifier: Modifier = Modifier) {
 
 enum class MediaTab { VIDEOS, AUDIOS }
 
+@Composable
+fun StorageVisualization(stats: StorageStats, modifier: Modifier = Modifier) {
+    val videoColor = Color(0xFFFF6600) // Orange
+    val audioColor = Color(0xFF87CEEB) // Blue
+    val otherColor = Color(0xFF71717A) // Zinc
+    val freeColor = Color(0xFFE4E4E7) // Light Zinc
+
+    val total = stats.totalBytes.toFloat()
+    if (total <= 0f) return
+
+    val videoSweep = (stats.videoBytes / total) * 360f
+    val audioSweep = (stats.audioBytes / total) * 360f
+    val otherSweep = (stats.otherBytes / total) * 360f
+    val freeSweep = (stats.freeBytes / total) * 360f
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.size(80.dp)) {
+                    var startAngle = -90f
+                    
+                    // Free space (background)
+                    drawArc(
+                        color = freeColor,
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(width = 20f)
+                    )
+
+                    // Other
+                    drawArc(
+                        color = otherColor,
+                        startAngle = startAngle,
+                        sweepAngle = otherSweep,
+                        useCenter = false,
+                        style = Stroke(width = 20f)
+                    )
+                    startAngle += otherSweep
+
+                    // Audio
+                    drawArc(
+                        color = audioColor,
+                        startAngle = startAngle,
+                        sweepAngle = audioSweep,
+                        useCenter = false,
+                        style = Stroke(width = 20f)
+                    )
+                    startAngle += audioSweep
+
+                    // Video
+                    drawArc(
+                        color = videoColor,
+                        startAngle = startAngle,
+                        sweepAngle = videoSweep,
+                        useCenter = false,
+                        style = Stroke(width = 20f)
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stats.formatSize(stats.totalBytes - stats.freeBytes),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Used",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(24.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                StorageLegendItem("Videos", stats.formatSize(stats.videoBytes), videoColor)
+                StorageLegendItem("Audios", stats.formatSize(stats.audioBytes), audioColor)
+                StorageLegendItem("Other", stats.formatSize(stats.otherBytes), otherColor)
+                StorageLegendItem("Free", stats.formatSize(stats.freeBytes), freeColor)
+            }
+        }
+    }
+}
+
+@Composable
+fun StorageLegendItem(label: String, size: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(60.dp)
+        )
+        Text(
+            text = size,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeScreen(
     viewModel: VideoViewModel,
     audioViewModel: AudioViewModel,
+    storageViewModel: StorageViewModel,
     lockerViewModel: LockerViewModel,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -162,8 +290,10 @@ fun HomeScreen(
         audioViewModel.fetchAudios(context)
     }
 
+    // Update selectedTab only if initialTab is explicitly changed via navigation
+    // and it differs from the current selectedTab to avoid resetting user choice.
     LaunchedEffect(initialTab) {
-        if (initialTab != null) {
+        if (initialTab != null && initialTab != selectedTab) {
             selectedTab = initialTab
         }
     }
@@ -181,6 +311,12 @@ fun HomeScreen(
     val audioFolders by audioViewModel.folders.collectAsStateWithLifecycle()
     val selectedAudioFolder by audioViewModel.selectedFolder.collectAsStateWithLifecycle()
     val audiosInFolder by audioViewModel.audiosInSelectedFolder.collectAsStateWithLifecycle()
+
+    // Storage Stats
+    val storageStats by storageViewModel.storageStats.collectAsStateWithLifecycle()
+    LaunchedEffect(videos, audios) {
+        storageViewModel.updateStorageStats(videos, audios)
+    }
     
     val isLoading = if (selectedTab == MediaTab.VIDEOS) isLoadingVideos else isLoadingAudios
     
@@ -331,6 +467,11 @@ fun HomeScreen(
                 // If it was just a deletion (not a move to locker), refresh
                 if (videoPendingMove == null && audioPendingMove == null && 
                     folderVideosPendingMove.isEmpty() && folderAudiosPendingMove.isEmpty()) {
+                    
+                    // Stop playback if the current item was deleted
+                    viewModel.activeVideoUri.value?.let { viewModel.stopIfPlaying(Uri.parse(it)) }
+                    audioViewModel.activeAudioUri.value?.let { audioViewModel.stopIfPlaying(Uri.parse(it)) }
+                    
                     viewModel.refreshVideos(context)
                     audioViewModel.refreshAudios(context)
                 }
@@ -461,6 +602,8 @@ fun HomeScreen(
                                         val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, deleteUriList)
                                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                                     } else {
+                                        val uris = videos.map { it.uri }
+                                        viewModel.stopIfPlaying(uris)
                                         videos.forEach { context.contentResolver.delete(it.uri, null, null) }
                                         viewModel.refreshVideos(context)
                                         isProcessing = false
@@ -476,6 +619,8 @@ fun HomeScreen(
                                         val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, deleteUriList)
                                         deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                                     } else {
+                                        val uris = audios.map { it.uri }
+                                        audioViewModel.stopIfPlaying(uris)
                                         audios.forEach { context.contentResolver.delete(it.uri, null, null) }
                                         audioViewModel.refreshAudios(context)
                                         isProcessing = false
@@ -523,6 +668,7 @@ fun HomeScreen(
                                 val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, listOf(video.uri))
                                 deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                             } else {
+                                viewModel.stopIfPlaying(video.uri)
                                 context.contentResolver.delete(video.uri, null, null)
                                 viewModel.refreshVideos(context)
                                 isProcessing = false
@@ -566,6 +712,7 @@ fun HomeScreen(
                                 val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, listOf(audio.uri))
                                 deleteLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
                             } else {
+                                audioViewModel.stopIfPlaying(audio.uri)
                                 context.contentResolver.delete(audio.uri, null, null)
                                 audioViewModel.refreshAudios(context)
                                 isProcessing = false
@@ -899,51 +1046,80 @@ fun HomeScreen(
                             if (selectedTab.ordinal < tabPositions.size) {
                                 TabRowDefaults.SecondaryIndicator(
                                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                                    color = Color(0xFFFF6600)
+                                    color = Color(0xFFFF6600),
+                                    height = 3.dp
                                 )
                             }
-                        }
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     ) {
                         Tab(
                             selected = selectedTab == MediaTab.VIDEOS,
                             onClick = { selectedTab = MediaTab.VIDEOS },
-                            text = { Text("Videos") }
+                            text = { 
+                                Text(
+                                    "Videos",
+                                    fontWeight = if (selectedTab == MediaTab.VIDEOS) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 16.sp
+                                ) 
+                            }
                         )
                         Tab(
                             selected = selectedTab == MediaTab.AUDIOS,
                             onClick = { selectedTab = MediaTab.AUDIOS },
-                            text = { Text("Audios") }
+                            text = { 
+                                Text(
+                                    "Audios",
+                                    fontWeight = if (selectedTab == MediaTab.AUDIOS) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 16.sp
+                                ) 
+                            }
                         )
+                    }
+                    if (selectedTab == MediaTab.VIDEOS) {
+                        StorageVisualization(stats = storageStats)
                     }
                 }
                 
                 // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { 
-                        Text(if (currentSelectedFolder == null) "Search folders..." else "Search in $currentSelectedFolder...") 
-                    },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear search")
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        placeholder = { 
+                            Text(
+                                if (currentSelectedFolder == null) "Search folders..." else "Search in $currentSelectedFolder...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            ) 
+                        },
+                        leadingIcon = { 
+                            Icon(
+                                Icons.Default.Search, 
+                                contentDescription = null,
+                                tint = Color(0xFFFF6600)
+                            ) 
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                }
                             }
-                        }
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
-                    ),
-                    singleLine = true
-                )
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF6600),
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        ),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyLarge
+                    )
+                }
 
                 Text(
                     text = if (currentSelectedFolder == null) "Folders" else if (selectedTab == MediaTab.VIDEOS) "Videos" else "Audios",
@@ -992,52 +1168,58 @@ fun HomeScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
+                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (currentSelectedFolder == null) {
-                        items(filteredFolders.keys.toList()) { folderName ->
-                            FolderListItem(
-                                name = folderName,
-                                count = filteredFolders[folderName] ?: 0,
-                                onClick = { 
-                                    if (selectedTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName)
-                                    else audioViewModel.setSelectedFolder(folderName)
-                                },
-                                onDelete = { folderToDelete = folderName },
-                                onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }
-                            )
+                        items(filteredFolders.keys.toList(), key = { it }) { folderName ->
+                            Box(modifier = Modifier.animateItem()) {
+                                FolderListItem(
+                                    name = folderName,
+                                    count = filteredFolders[folderName] ?: 0,
+                                    onClick = { 
+                                        if (selectedTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName)
+                                        else audioViewModel.setSelectedFolder(folderName)
+                                    },
+                                    onDelete = { folderToDelete = folderName },
+                                    onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }
+                                )
+                            }
                         }
                     } else if (selectedTab == MediaTab.VIDEOS) {
                         items(filteredVideos, key = { it.id }) { video ->
                             val isActive = viewModel.activeVideoUri.collectAsState().value == video.uri.toString()
-                            VideoListItem(
-                                video = video,
-                                isPlaying = isActive && viewModel.isPlaying.collectAsState().value,
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                onClick = {
-                                    val encodedUri = URLEncoder.encode(video.uri.toString(), StandardCharsets.UTF_8.toString())
-                                    onVideoClick(encodedUri)
-                                },
-                                onLockClick = { checkPinAndProceed { selectedVideoForLocker = video } },
-                                onDeleteClick = { selectedVideoForDelete = video }
-                            )
+                            Box(modifier = Modifier.animateItem()) {
+                                VideoListItem(
+                                    video = video,
+                                    isPlaying = isActive && viewModel.isPlaying.collectAsState().value,
+                                    sharedTransitionScope = sharedTransitionScope,
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    onClick = {
+                                        val encodedUri = URLEncoder.encode(video.uri.toString(), StandardCharsets.UTF_8.toString())
+                                        onVideoClick(encodedUri)
+                                    },
+                                    onLockClick = { checkPinAndProceed { selectedVideoForLocker = video } },
+                                    onDeleteClick = { selectedVideoForDelete = video }
+                                )
+                            }
                         }
                     } else {
                         items(filteredAudios, key = { it.id }) { audio ->
                             val isActive = audioViewModel.activeAudioUri.collectAsState().value == audio.uri.toString()
-                            AudioListItem(
-                                audio = audio,
-                                isPlaying = isActive && audioViewModel.isPlaying.collectAsStateWithLifecycle().value,
-                                onClick = {
-                                    val encodedUri = URLEncoder.encode(audio.uri.toString(), StandardCharsets.UTF_8.toString())
-                                    onAudioClick(encodedUri)
-                                },
-                                onPlayPauseClick = { audioViewModel.togglePlayPause(audio) },
-                                onLockClick = { checkPinAndProceed { selectedAudioForLocker = audio } },
-                                onDeleteClick = { selectedAudioForDelete = audio }
-                            )
+                            Box(modifier = Modifier.animateItem()) {
+                                AudioListItem(
+                                    audio = audio,
+                                    isPlaying = isActive && audioViewModel.isPlaying.collectAsStateWithLifecycle().value,
+                                    onClick = {
+                                        val encodedUri = URLEncoder.encode(audio.uri.toString(), StandardCharsets.UTF_8.toString())
+                                        onAudioClick(encodedUri)
+                                    },
+                                    onPlayPauseClick = { audioViewModel.togglePlayPause(audio) },
+                                    onLockClick = { checkPinAndProceed { selectedAudioForLocker = audio } },
+                                    onDeleteClick = { selectedAudioForDelete = audio }
+                                )
+                            }
                         }
                     }
                 }
@@ -1059,29 +1241,28 @@ fun FolderListItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer
+                modifier = Modifier.size(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Folder,
                         contentDescription = null,
                         tint = Color(0xFFFF9800),
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
@@ -1169,7 +1350,6 @@ fun VideoListItem(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = onLockClick
@@ -1181,24 +1361,22 @@ fun VideoListItem(
                     exit = fadeOut(),
                     resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
                 ),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isPlaying) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-            ),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 modifier = Modifier
                     .padding(8.dp)
                     .fillMaxWidth()
-                    .height(80.dp),
+                    .height(84.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .width(120.dp)
+                        .width(130.dp)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(14.dp))
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
@@ -1216,15 +1394,14 @@ fun VideoListItem(
                                 rememberSharedContentState(key = "video_thumb_${video.uri}"),
                                 animatedVisibilityScope = animatedVisibilityScope
                             ),
-                        contentScale = ContentScale.Crop,
-                        alpha = if (isPlaying) 0.6f else 1f
+                        contentScale = ContentScale.Crop
                     )
 
                     if (isPlaying) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.2f)),
+                                .background(Color.Black.copy(alpha = 0.3f)),
                             contentAlignment = Alignment.Center
                         ) {
                             PlayingVisualizer()
@@ -1236,7 +1413,7 @@ fun VideoListItem(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(8.dp)
+                            .padding(6.dp)
                     ) {
                         Text(
                             text = formatDuration(video.duration),
@@ -1247,19 +1424,19 @@ fun VideoListItem(
                     }
                 }
                 
-                Column(modifier = Modifier.padding(12.dp).weight(1f)) {
+                Column(modifier = Modifier.padding(horizontal = 12.dp).weight(1f)) {
                     Text(
                         text = video.name,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                        color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "${video.size / (1024 * 1024)} MB",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isPlaying) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -1267,7 +1444,8 @@ fun VideoListItem(
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color(0xFF71717A)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -1275,7 +1453,8 @@ fun VideoListItem(
                     Icon(
                         Icons.Default.Lock,
                         contentDescription = "Move to Locker",
-                        tint = Color(0xFF71717A)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -1305,9 +1484,8 @@ fun AudioListItem(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -1318,7 +1496,7 @@ fun AudioListItem(
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (isPlaying) {
@@ -1364,7 +1542,7 @@ fun AudioListItem(
                 Icon(
                     Icons.Default.Lock,
                     contentDescription = "Lock",
-                    tint = Color(0xFF71717A),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1373,7 +1551,7 @@ fun AudioListItem(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = Color(0xFF71717A),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
             }

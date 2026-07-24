@@ -193,6 +193,28 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun stopIfPlaying(uri: Uri) {
+        _exoPlayer?.let { player ->
+            val currentUri = player.currentMediaItem?.localConfiguration?.uri
+            if (currentUri == uri) {
+                player.stop()
+                player.clearMediaItems()
+                setActiveVideo(null)
+            }
+        }
+    }
+
+    fun stopIfPlaying(uris: List<Uri>) {
+        _exoPlayer?.let { player ->
+            val currentUri = player.currentMediaItem?.localConfiguration?.uri
+            if (currentUri != null && uris.contains(currentUri)) {
+                player.stop()
+                player.clearMediaItems()
+                setActiveVideo(null)
+            }
+        }
+    }
+
     fun refreshVideos(context: Context) {
         fetchVideosInternal(context)
     }
