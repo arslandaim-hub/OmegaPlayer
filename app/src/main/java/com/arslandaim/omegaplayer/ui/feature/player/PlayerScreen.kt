@@ -151,7 +151,6 @@ fun PlayerScreen(
         val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
         if (currentUri != newUri) {
             playbackError = null
-            viewModel.setActiveVideo(videoUri)
             exoPlayer.stop()
             exoPlayer.clearMediaItems()
             exoPlayer.setMediaItem(MediaItem.fromUri(newUri))
@@ -251,7 +250,6 @@ fun PlayerScreen(
             
             if (!currentBackgroundPlay.value) {
                 exoPlayer.pause()
-                viewModel.setActiveVideo(null)
             }
         }
     }

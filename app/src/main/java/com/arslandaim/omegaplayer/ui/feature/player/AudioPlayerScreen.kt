@@ -270,7 +270,6 @@ fun AudioPlayerScreen(
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                 val currentUri = mediaItem?.localConfiguration?.uri?.toString()
                 currentAudio = audios.find { it.uri.toString() == currentUri }
-                viewModel.setActiveAudio(currentUri)
             }
         }
         player.addListener(listener)
@@ -311,7 +310,6 @@ fun AudioPlayerScreen(
         } else {
             // Update currentAudio if already playing
             currentAudio = audios.find { it.uri.toString() == audioUri }
-            viewModel.setActiveAudio(audioUri)
         }
         
         try {

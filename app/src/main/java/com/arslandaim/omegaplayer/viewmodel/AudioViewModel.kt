@@ -172,10 +172,6 @@ class AudioViewModel @Inject constructor(
         }
     }
 
-    fun setActiveAudio() {
-        // Automatically handled by PlaybackConnection
-    }
-
     fun setSelectedFolder(folderName: String?) {
         _selectedFolder.value = folderName
     }

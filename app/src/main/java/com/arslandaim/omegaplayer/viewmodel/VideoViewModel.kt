@@ -166,10 +166,6 @@ class VideoViewModel @Inject constructor(
         }
     }
 
-    fun setActiveVideo() {
-        // Automatically handled by PlaybackConnection
-    }
-
     @androidx.annotation.OptIn(UnstableApi::class)
     fun toggleBackgroundPlay(context: Context, enabled: Boolean) {
         _isBackgroundPlayEnabled.value = enabled
