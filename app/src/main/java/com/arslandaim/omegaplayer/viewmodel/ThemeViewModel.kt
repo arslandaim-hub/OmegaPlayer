@@ -6,18 +6,21 @@
 
 package com.arslandaim.omegaplayer.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arslandaim.omegaplayer.data.AppTheme
 import com.arslandaim.omegaplayer.data.ThemePreferences
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ThemeViewModel(application: Application) : AndroidViewModel(application) {
-    private val themePreferences = ThemePreferences(application)
+@HiltViewModel
+class ThemeViewModel @Inject constructor(
+    private val themePreferences: ThemePreferences
+) : ViewModel() {
 
     val theme: StateFlow<AppTheme> = themePreferences.theme.stateIn(
         scope = viewModelScope,

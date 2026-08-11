@@ -7,15 +7,10 @@
 package com.arslandaim.omegaplayer.viewmodel
 
 import android.app.Application
-import android.content.ContentUris
 import android.content.Context
-import android.provider.MediaStore
-import android.util.Log
 import android.content.Intent
-import android.database.ContentObserver
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.AudioAttributes
@@ -25,52 +20,101 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.SeekParameters
-import com.arslandaim.omegaplayer.data.VideoModel
-import com.arslandaim.omegaplayer.service.PlaybackService
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import coil.size.Precision
+import com.arslandaim.omegaplayer.data.VideoModel
+import com.arslandaim.omegaplayer.data.RecentPlayback
+import com.arslandaim.omegaplayer.domain.usecase.media.GetVideosUseCase
+import com.arslandaim.omegaplayer.domain.usecase.playback.GetRecentPlaybackUseCase
+import com.arslandaim.omegaplayer.data.repository.PlaybackRepository
+import com.arslandaim.omegaplayer.media.PlaybackConnection
+import com.arslandaim.omegaplayer.service.PlaybackService
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class VideoViewModel(application: Application) : AndroidViewModel(application) {
-    private val _videos = MutableStateFlow<List<VideoModel>>(emptyList())
-    val videos: StateFlow<List<VideoModel>> = _videos.asStateFlow()
+@HiltViewModel
+class VideoViewModel @Inject constructor(
+    application: Application,
+    private val getVideosUseCase: GetVideosUseCase,
+    private val getRecentPlaybackUseCase: GetRecentPlaybackUseCase,
+    private val playbackRepository: PlaybackRepository,
+    private val playbackConnection: PlaybackConnection
+) : AndroidViewModel(application) {
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _activeVideoUri = MutableStateFlow<String?>(null)
-    val activeVideoUri: StateFlow<String?> = _activeVideoUri.asStateFlow()
+    val activeVideoUri: StateFlow<String?> = playbackConnection.currentMediaItem
+        .map { it?.localConfiguration?.uri?.toString() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _isBackgroundPlayEnabled = MutableStateFlow(false)
     val isBackgroundPlayEnabled: StateFlow<Boolean> = _isBackgroundPlayEnabled.asStateFlow()
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+    val isPlaying: StateFlow<Boolean> = playbackConnection.isPlaying
 
     private val _selectedFolder = MutableStateFlow<String?>(null)
     val selectedFolder: StateFlow<String?> = _selectedFolder.asStateFlow()
 
-    val folders: StateFlow<Map<String, Int>> = _videos
+    val videos: StateFlow<List<VideoModel>> = getVideosUseCase()
+        .onStart { _isLoading.value = true }
+        .onEach { 
+            _isLoading.value = false
+            preloadThumbnails(getApplication(), it)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val recentPlayback: StateFlow<List<RecentPlayback>> = getRecentPlaybackUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _sleepTimerActive = MutableStateFlow(false)
+    val sleepTimerActive: StateFlow<Boolean> = _sleepTimerActive.asStateFlow()
+
+    private val _sleepTimerTimeLeft = MutableStateFlow(0L)
+    val sleepTimerTimeLeft: StateFlow<Long> = _sleepTimerTimeLeft.asStateFlow()
+
+    private var sleepTimerJob: kotlinx.coroutines.Job? = null
+
+    fun setSleepTimer(minutes: Int) {
+        sleepTimerJob?.cancel()
+        if (minutes <= 0) {
+            _sleepTimerActive.value = false
+            _sleepTimerTimeLeft.value = 0
+            return
+        }
+
+        _sleepTimerActive.value = true
+        _sleepTimerTimeLeft.value = minutes * 60 * 1000L
+        
+        sleepTimerJob = viewModelScope.launch {
+            while (_sleepTimerTimeLeft.value > 0) {
+                delay(1000)
+                _sleepTimerTimeLeft.value -= 1000
+            }
+            _exoPlayer?.pause()
+            _sleepTimerActive.value = false
+        }
+    }
+
+    val folders: StateFlow<Map<String, Int>> = videos
         .map { videoList ->
             videoList.groupBy { File(it.path).parentFile?.name ?: "Internal" }
                 .mapValues { it.value.size }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val videosInSelectedFolder: StateFlow<List<VideoModel>> = combine(_videos, _selectedFolder) { videoList, folder ->
+    val videosInSelectedFolder: StateFlow<List<VideoModel>> = combine(videos, _selectedFolder) { videoList, folder ->
         if (folder == null) emptyList()
         else videoList.filter { (File(it.path).parentFile?.name ?: "Internal") == folder }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private var contentObserver: ContentObserver? = null
-    
     private var _exoPlayer: ExoPlayer? = null
     
     @androidx.annotation.OptIn(UnstableApi::class)
@@ -81,14 +125,8 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
                 .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                 .build()
             
-            // Optimized for instant startup and silky smooth playback of large files
             val loadControl = DefaultLoadControl.Builder()
-                .setBufferDurationsMs(
-                    15_000, // minBufferMs: Reduced to 15s for faster initial load
-                    50_000, // maxBufferMs: 50s for solid background buffering
-                    500,    // bufferForPlaybackMs: Extremely low (500ms) for near-instant start
-                    1_000   // bufferForPlaybackAfterRebufferMs: 1s for quick recovery
-                )
+                .setBufferDurationsMs(15_000, 50_000, 500, 1_000)
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
 
@@ -97,19 +135,14 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
                 .setHandleAudioBecomingNoisy(true)
                 .setLoadControl(loadControl)
                 .build().apply {
-                    setSeekParameters(SeekParameters.CLOSEST_SYNC) // Faster seeking by snapping to keyframes
+                    setSeekParameters(SeekParameters.CLOSEST_SYNC)
                     addListener(object : Player.Listener {
                         override fun onIsPlayingChanged(isPlaying: Boolean) {
-                            _isPlaying.value = isPlaying
-                            
                             if (isPlaying && _isBackgroundPlayEnabled.value) {
                                 startPlaybackService(context)
                             }
-                        }
-
-                        override fun onPlaybackStateChanged(playbackState: Int) {
-                            if (playbackState == Player.STATE_ENDED || playbackState == Player.STATE_IDLE) {
-                                _isPlaying.value = false
+                            if (!isPlaying) {
+                                savePlaybackProgress()
                             }
                         }
                     })
@@ -133,13 +166,8 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    @androidx.annotation.OptIn(UnstableApi::class)
-    fun stopPlaybackService(context: Context) {
-        // No-op. Media3 manages service lifecycle.
-    }
-
-    fun setActiveVideo(uri: String?) {
-        _activeVideoUri.value = uri
+    fun setActiveVideo() {
+        // Automatically handled by PlaybackConnection
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
@@ -156,40 +184,18 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getCurrentVideo(): VideoModel? {
-        val uri = _activeVideoUri.value ?: return null
-        return _videos.value.find { it.uri.toString() == uri }
-    }
-
-    fun fetchVideos(context: Context) {
-        // Start observing if not already
-        if (contentObserver == null) {
-            contentObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
-                override fun onChange(selfChange: Boolean, uri: Uri?) {
-                    super.onChange(selfChange, uri)
-                    Log.d("VideoViewModel", "MediaStore changed, refreshing: $uri")
-                    refreshVideos(context)
-                }
-            }
-            context.contentResolver.registerContentObserver(
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                true,
-                contentObserver!!
-            )
-        }
-
-        if (_videos.value.isNotEmpty() && !_isLoading.value) return
-        
-        fetchVideosInternal(context)
+        val uri = activeVideoUri.value ?: return null
+        return videos.value.find { it.uri.toString() == uri }
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
     override fun onCleared() {
         super.onCleared()
-        _exoPlayer?.release()
-        _exoPlayer = null
-        PlaybackService.playerInstance = null
-        contentObserver?.let {
-            getApplication<Application>().contentResolver.unregisterContentObserver(it)
+        // Professional approach: don't release if background play is enabled or service is active
+        if (!_isBackgroundPlayEnabled.value) {
+            _exoPlayer?.release()
+            _exoPlayer = null
+            PlaybackService.playerInstance = null
         }
     }
 
@@ -199,7 +205,6 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
             if (currentUri == uri) {
                 player.stop()
                 player.clearMediaItems()
-                setActiveVideo(null)
             }
         }
     }
@@ -210,80 +215,13 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
             if (currentUri != null && uris.contains(currentUri)) {
                 player.stop()
                 player.clearMediaItems()
-                setActiveVideo(null)
             }
-        }
-    }
-
-    fun refreshVideos(context: Context) {
-        fetchVideosInternal(context)
-    }
-
-    private fun fetchVideosInternal(context: Context) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val videoList = withContext(Dispatchers.IO) {
-                val list = mutableListOf<VideoModel>()
-                val projection = arrayOf(
-                    MediaStore.Video.Media._ID,
-                    MediaStore.Video.Media.DISPLAY_NAME,
-                    MediaStore.Video.Media.DURATION,
-                    MediaStore.Video.Media.SIZE,
-                    MediaStore.Video.Media.DATA
-                )
-
-                try {
-                    val cursor = context.contentResolver.query(
-                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                        projection,
-                        null,
-                        null,
-                        "${MediaStore.Video.Media.DATE_ADDED} DESC"
-                    )
-
-                    cursor?.use {
-                        val idColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-                        val nameColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-                        val durationColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-                        val sizeColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-                        val dataColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-
-                        while (it.moveToNext()) {
-                            val id = it.getLong(idColumn)
-                            val name = it.getString(nameColumn) ?: "Unknown"
-                            val duration = it.getLong(durationColumn)
-                            val size = it.getLong(sizeColumn)
-                            val path = it.getString(dataColumn) ?: ""
-                            val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-
-                            list.add(VideoModel(id, contentUri, name, duration, size, path))
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("VideoViewModel", "Error fetching videos", e)
-                }
-                list
-            }
-
-            // Clear cache for removed videos
-            val currentVideos = _videos.value
-            val newVideoIds = videoList.map { it.id }.toSet()
-            currentVideos.forEach { oldVideo ->
-                if (oldVideo.id !in newVideoIds) {
-                    clearVideoCache(context, oldVideo.id)
-                }
-            }
-
-            _videos.value = videoList
-            _isLoading.value = false
-            preloadThumbnails(context, videoList)
         }
     }
 
     private fun preloadThumbnails(context: Context, videoList: List<VideoModel>) {
         val imageLoader = context.imageLoader
         viewModelScope.launch {
-            // Preload thumbnails with a slight delay between each to avoid IO saturation
             videoList.forEach { video ->
                 val request = ImageRequest.Builder(context)
                     .data(video.uri)
@@ -294,9 +232,21 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
                     .memoryCacheKey("thumb_${video.id}")
                     .build()
                 imageLoader.enqueue(request)
-                delay(50) // 50ms gap to keep the UI thread and IO pipeline smooth
+                delay(50)
             }
         }
+    }
+
+    fun getVideosInFolder(folderName: String): List<VideoModel> {
+        return videos.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }
+    }
+
+    fun fetchVideos(context: Context) {
+        // Automatically handled by Flow
+    }
+
+    fun refreshVideos(context: Context) {
+        // Trigger manual refresh if needed
     }
 
     @OptIn(coil.annotation.ExperimentalCoilApi::class)
@@ -307,7 +257,26 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
         imageLoader.diskCache?.remove(key)
     }
 
-    fun getVideosInFolder(folderName: String): List<VideoModel> {
-        return _videos.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }
+    fun savePlaybackProgress() {
+        val player = _exoPlayer ?: return
+        val mediaItem = player.currentMediaItem ?: return
+        val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: return
+        val video = videos.value.find { it.uri.toString() == currentUri } ?: return
+        
+        val position = player.currentPosition
+        val duration = player.duration
+        val name = video.name
+
+        viewModelScope.launch {
+            playbackRepository.saveRecentPlayback(
+                RecentPlayback(
+                    uri = currentUri,
+                    position = position,
+                    duration = duration,
+                    mediaType = "video",
+                    name = name
+                )
+            )
+        }
     }
 }

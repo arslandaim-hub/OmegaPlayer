@@ -7,35 +7,41 @@
 package com.arslandaim.omegaplayer.viewmodel
 
 import android.app.Application
-import android.content.ComponentName
 import android.content.ContentUris
-import android.content.Context
-import android.database.ContentObserver
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.provider.MediaStore
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
 import com.arslandaim.omegaplayer.data.AudioModel
-import com.arslandaim.omegaplayer.service.PlaybackService
-import com.google.common.util.concurrent.MoreExecutors
+import com.arslandaim.omegaplayer.data.Playlist
+import com.arslandaim.omegaplayer.data.PlaylistItem
+import com.arslandaim.omegaplayer.data.RecentPlayback
+import com.arslandaim.omegaplayer.data.repository.PlaybackRepository
+import com.arslandaim.omegaplayer.domain.usecase.media.GetAudiosUseCase
+import com.arslandaim.omegaplayer.domain.usecase.media.GetVideosUseCase
+import com.arslandaim.omegaplayer.domain.usecase.playback.GetRecentPlaybackUseCase
+import com.arslandaim.omegaplayer.domain.usecase.playback.PlaylistUseCases
+import com.arslandaim.omegaplayer.media.PlaybackConnection
+import android.content.Context
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class AudioViewModel(application: Application) : AndroidViewModel(application) {
-    private val _audios = MutableStateFlow<List<AudioModel>>(emptyList())
-    val audios: StateFlow<List<AudioModel>> = _audios.asStateFlow()
+@HiltViewModel
+class AudioViewModel @Inject constructor(
+    application: Application,
+    private val getAudiosUseCase: GetAudiosUseCase,
+    private val playlistUseCases: PlaylistUseCases,
+    private val getRecentPlaybackUseCase: GetRecentPlaybackUseCase,
+    private val playbackConnection: PlaybackConnection,
+    private val playbackRepository: PlaybackRepository
+) : AndroidViewModel(application) {
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -43,65 +49,95 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedFolder = MutableStateFlow<String?>(null)
     val selectedFolder: StateFlow<String?> = _selectedFolder.asStateFlow()
 
-    private val _activeAudioUri = MutableStateFlow<String?>(null)
-    val activeAudioUri: StateFlow<String?> = _activeAudioUri.asStateFlow()
+    val activeAudioUri: StateFlow<String?> = playbackConnection.currentMediaItem
+        .map { it?.localConfiguration?.uri?.toString() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
+    val isPlaying: StateFlow<Boolean> = playbackConnection.isPlaying
+    val mediaController: StateFlow<MediaController?> = playbackConnection.mediaController
 
-    private val _mediaController = MutableStateFlow<MediaController?>(null)
-    val mediaController: StateFlow<MediaController?> = _mediaController.asStateFlow()
+    val audios: StateFlow<List<AudioModel>> = getAudiosUseCase()
+        .onStart { _isLoading.value = true }
+        .onEach { _isLoading.value = false }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val folders: StateFlow<Map<String, Int>> = _audios
+    val playlists: StateFlow<List<Playlist>> = playlistUseCases.getPlaylists()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val recentPlayback: StateFlow<List<RecentPlayback>> = getRecentPlaybackUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _sleepTimerActive = MutableStateFlow(false)
+    val sleepTimerActive: StateFlow<Boolean> = _sleepTimerActive.asStateFlow()
+
+    private val _sleepTimerTimeLeft = MutableStateFlow(0L)
+    val sleepTimerTimeLeft: StateFlow<Long> = _sleepTimerTimeLeft.asStateFlow()
+
+    private var sleepTimerJob: kotlinx.coroutines.Job? = null
+
+    fun setSleepTimer(minutes: Int) {
+        sleepTimerJob?.cancel()
+        if (minutes <= 0) {
+            _sleepTimerActive.value = false
+            _sleepTimerTimeLeft.value = 0
+            return
+        }
+
+        _sleepTimerActive.value = true
+        _sleepTimerTimeLeft.value = minutes * 60 * 1000L
+        
+        sleepTimerJob = viewModelScope.launch {
+            while (_sleepTimerTimeLeft.value > 0) {
+                delay(1000)
+                _sleepTimerTimeLeft.value -= 1000
+            }
+            playbackConnection.pause()
+            _sleepTimerActive.value = false
+        }
+    }
+
+    val folders: StateFlow<Map<String, Int>> = audios
         .map { audioList ->
             audioList.groupBy { File(it.path).parentFile?.name ?: "Internal" }
                 .mapValues { it.value.size }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val audiosInSelectedFolder: StateFlow<List<AudioModel>> = combine(_audios, _selectedFolder) { audioList, folder ->
+    val audiosInSelectedFolder: StateFlow<List<AudioModel>> = combine(audios, _selectedFolder) { audioList, folder ->
         if (folder == null) emptyList()
         else audioList.filter { (File(it.path).parentFile?.name ?: "Internal") == folder }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private var contentObserver: ContentObserver? = null
-
-    init {
-        initializeController()
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            playlistUseCases.createPlaylist(name)
+        }
     }
 
-    @androidx.annotation.OptIn(UnstableApi::class)
-    private fun initializeController() {
-        val sessionToken = SessionToken(getApplication(), ComponentName(getApplication(), PlaybackService::class.java))
-        val controllerFuture = MediaController.Builder(getApplication(), sessionToken).buildAsync()
-        controllerFuture.addListener({
-            try {
-                val controller = controllerFuture.get()
-                _mediaController.value = controller
-                controller.addListener(object : Player.Listener {
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        _isPlaying.value = isPlaying
-                    }
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState == Player.STATE_ENDED ||
-                            playbackState == Player.STATE_IDLE
-                        ) {
-                            _isPlaying.value = false
-                        }
-                    }
-                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                        _activeAudioUri.value = mediaItem?.localConfiguration?.uri?.toString()
-                    }
-                },
-            )
-            } catch (e: Exception) {
-                Log.e("AudioViewModel", "Failed to connect to MediaController", e)
-            }
-        }, MoreExecutors.directExecutor())
+    fun deletePlaylist(playlist: Playlist) {
+        viewModelScope.launch {
+            playlistUseCases.deletePlaylist(playlist)
+        }
+    }
+
+    fun addToPlaylist(playlistId: Int, uri: String, type: String) {
+        viewModelScope.launch {
+            playlistUseCases.addToPlaylist(playlistId, uri, type)
+        }
+    }
+
+    fun removeFromPlaylist(playlistId: Int, uri: String) {
+        viewModelScope.launch {
+            playlistUseCases.removeFromPlaylist(playlistId, uri)
+        }
+    }
+
+    fun getPlaylistItems(playlistId: Int): Flow<List<PlaylistItem>> {
+        return playlistUseCases.getPlaylistItems(playlistId)
     }
 
     fun togglePlayPause(audio: AudioModel) {
-        val controller = _mediaController.value ?: return
+        val controller = playbackConnection.mediaController.value ?: return
         val currentUri = controller.currentMediaItem?.localConfiguration?.uri?.toString()
         
         if (currentUri == audio.uri.toString()) {
@@ -132,133 +168,70 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 controller.setMediaItems(mediaItems, index, 0L)
                 controller.prepare()
                 controller.play()
-                _activeAudioUri.value = audio.uri.toString()
             }
         }
     }
 
-    fun setActiveAudio(uri: String?) {
-        _activeAudioUri.value = uri
+    fun setActiveAudio() {
+        // Automatically handled by PlaybackConnection
     }
 
     fun setSelectedFolder(folderName: String?) {
         _selectedFolder.value = folderName
     }
 
-    fun fetchAudios(context: Context) {
-        if (contentObserver == null) {
-            contentObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
-                override fun onChange(selfChange: Boolean, uri: Uri?) {
-                    super.onChange(selfChange, uri)
-                    refreshAudios(context)
-                }
-            }
-            context.contentResolver.registerContentObserver(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                true,
-                contentObserver!!
-            )
-        }
-
-        if (_audios.value.isNotEmpty() && !_isLoading.value) return
-        fetchAudiosInternal(context)
-    }
-
     fun stopIfPlaying(uri: Uri) {
-        _mediaController.value?.let { controller ->
-            val currentUri = controller.currentMediaItem?.localConfiguration?.uri
-            if (currentUri == uri) {
-                controller.stop()
-                controller.clearMediaItems()
-                _activeAudioUri.value = null
-            }
+        val controller = playbackConnection.mediaController.value ?: return
+        val currentUri = controller.currentMediaItem?.localConfiguration?.uri
+        if (currentUri == uri) {
+            controller.stop()
+            controller.clearMediaItems()
         }
     }
 
     fun stopIfPlaying(uris: List<Uri>) {
-        _mediaController.value?.let { controller ->
-            val currentUri = controller.currentMediaItem?.localConfiguration?.uri
-            if (currentUri != null && uris.contains(currentUri)) {
-                controller.stop()
-                controller.clearMediaItems()
-                _activeAudioUri.value = null
-            }
-        }
-    }
-
-    fun refreshAudios(context: Context) {
-        fetchAudiosInternal(context)
-    }
-
-    private fun fetchAudiosInternal(context: Context) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val audioList = withContext(Dispatchers.IO) {
-                val list = mutableListOf<AudioModel>()
-                val projection = arrayOf(
-                    MediaStore.Audio.Media._ID,
-                    MediaStore.Audio.Media.ALBUM_ID,
-                    MediaStore.Audio.Media.DISPLAY_NAME,
-                    MediaStore.Audio.Media.ARTIST,
-                    MediaStore.Audio.Media.ALBUM,
-                    MediaStore.Audio.Media.DURATION,
-                    MediaStore.Audio.Media.SIZE,
-                    MediaStore.Audio.Media.DATA
-                )
-
-                try {
-                    val cursor = context.contentResolver.query(
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        projection,
-                        null,
-                        null,
-                        "${MediaStore.Audio.Media.DATE_ADDED} DESC"
-                    )
-
-                    cursor?.use {
-                        val idColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                        val albumIdColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-                        val nameColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
-                        val artistColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                        val albumColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                        val durationColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                        val sizeColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-                        val dataColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-
-                        while (it.moveToNext()) {
-                            val id = it.getLong(idColumn)
-                            val albumId = it.getLong(albumIdColumn)
-                            val name = it.getString(nameColumn) ?: "Unknown"
-                            val artist = it.getString(artistColumn) ?: "Unknown Artist"
-                            val album = it.getString(albumColumn) ?: "Unknown Album"
-                            val duration = it.getLong(durationColumn)
-                            val size = it.getLong(sizeColumn)
-                            val path = it.getString(dataColumn) ?: ""
-                            val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-
-                            list.add(AudioModel(id, albumId, contentUri, name, artist, album, duration, size, path))
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("AudioViewModel", "Error fetching audios", e)
-                }
-                list
-            }
-            _audios.value = audioList
-            _isLoading.value = false
+        val controller = playbackConnection.mediaController.value ?: return
+        val currentUri = controller.currentMediaItem?.localConfiguration?.uri
+        if (currentUri != null && uris.contains(currentUri)) {
+            controller.stop()
+            controller.clearMediaItems()
         }
     }
 
     fun getAudiosInFolder(folderName: String): List<AudioModel> {
-        return _audios.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }
+        return audios.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        _mediaController.value?.release()
-        _mediaController.value = null
-        contentObserver?.let {
-            getApplication<Application>().contentResolver.unregisterContentObserver(it)
+    fun fetchAudios(context: Context) {
+        // Automatically handled by Flow in the new architecture
+    }
+
+    fun refreshAudios(context: Context) {
+        // You could trigger a manual refresh here if needed
+    }
+
+    fun savePlaybackProgress() {
+        val controller = playbackConnection.mediaController.value ?: return
+        val mediaItem = controller.currentMediaItem ?: return
+        val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: return
+        val audio = audios.value.find { it.uri.toString() == currentUri } ?: return
+        
+        val position = controller.currentPosition
+        val duration = controller.duration
+        val name = audio.name
+        val artist = audio.artist
+
+        viewModelScope.launch(Dispatchers.IO) {
+            playbackRepository.saveRecentPlayback(
+                RecentPlayback(
+                    uri = currentUri,
+                    position = position,
+                    duration = duration,
+                    mediaType = "audio",
+                    name = name,
+                    artist = artist
+                )
+            )
         }
     }
 }

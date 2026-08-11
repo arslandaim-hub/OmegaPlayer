@@ -8,26 +8,32 @@ package com.arslandaim.omegaplayer.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arslandaim.omegaplayer.data.LockedVideo
-import com.arslandaim.omegaplayer.data.LockerDatabase
+import com.arslandaim.omegaplayer.data.LockerDao
 import com.arslandaim.omegaplayer.data.LockerSettings
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class PinState {
-    object Loading : PinState()
-    object NotSet : PinState()
-    object Required : PinState()
-    object Unlocked : PinState()
+    data object Loading : PinState()
+    data object NotSet : PinState()
+    data object Required : PinState()
+    data object Unlocked : PinState()
 }
 
-class LockerViewModel(application: Application) : AndroidViewModel(application) {
-    private val dao = LockerDatabase.getDatabase(application).lockerDao()
+@HiltViewModel
+class LockerViewModel @Inject constructor(
+    application: Application,
+    private val dao: LockerDao
+) : AndroidViewModel(application) {
 
     private val _pinState = MutableStateFlow<PinState>(PinState.Loading)
     val pinState: StateFlow<PinState> = _pinState.asStateFlow()
@@ -47,8 +53,8 @@ class LockerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun checkLockerStatus() {
         viewModelScope.launch {
-            val settings = dao.getSettings()
-            if (settings == null) {
+            val currentSettings = dao.getSettings()
+            if (currentSettings == null) {
                 _pinState.value = PinState.NotSet
             } else if (_pinState.value !is PinState.Unlocked) {
                 _pinState.value = PinState.Required

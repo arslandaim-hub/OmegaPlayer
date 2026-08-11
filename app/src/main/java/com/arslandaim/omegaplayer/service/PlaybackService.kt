@@ -14,20 +14,23 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.arslandaim.omegaplayer.MainActivity
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @UnstableApi
+@AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
+
     companion object {
         var playerInstance: ExoPlayer? = null
     }
 
     private var mediaSession: MediaSession? = null
-    private var player: ExoPlayer? = null
 
     override fun onCreate() {
         super.onCreate()
         
-        player = playerInstance ?: ExoPlayer.Builder(this)
+        val player = playerInstance ?: ExoPlayer.Builder(this)
             .setAudioAttributes(
                 androidx.media3.common.AudioAttributes.Builder()
                     .setUsage(androidx.media3.common.C.USAGE_MEDIA)
@@ -48,7 +51,7 @@ class PlaybackService : MediaSessionService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        mediaSession = MediaSession.Builder(this, player!!)
+        mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
             .build()
     }
@@ -59,7 +62,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        player?.pause()
+        mediaSession?.player?.pause()
         stopSelf()
     }
 

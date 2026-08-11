@@ -19,6 +19,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,23 +44,28 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
-import com.arslandaim.omegaplayer.ui.home.HomeScreen
-import com.arslandaim.omegaplayer.ui.locker.LockerScreen
+import com.arslandaim.omegaplayer.ui.feature.library.HomeScreen
+import com.arslandaim.omegaplayer.ui.feature.locker.LockerScreen
 import com.arslandaim.omegaplayer.ui.navigation.Screen
-import com.arslandaim.omegaplayer.ui.player.PlayerScreen
-import com.arslandaim.omegaplayer.ui.settings.SettingsScreen
+import com.arslandaim.omegaplayer.ui.feature.player.PlayerScreen
+import com.arslandaim.omegaplayer.ui.feature.settings.SettingsScreen
 import com.arslandaim.omegaplayer.ui.theme.OmegaPlayerTheme
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.arslandaim.omegaplayer.viewmodel.VideoViewModel
 import com.arslandaim.omegaplayer.viewmodel.AudioViewModel
 import com.arslandaim.omegaplayer.viewmodel.ThemeViewModel
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
 import com.arslandaim.omegaplayer.viewmodel.StorageViewModel
-import com.arslandaim.omegaplayer.ui.player.AudioPlayerScreen
+import com.arslandaim.omegaplayer.ui.feature.player.AudioPlayerScreen
+import com.arslandaim.omegaplayer.media.PlaybackConnection
+import com.arslandaim.omegaplayer.ui.common.NowPlayingBar
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -67,18 +73,22 @@ import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalSharedTransitionApi::class)
+@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
     private var isPlayerActive = false
+
+    @Inject
+    lateinit var playbackConnection: PlaybackConnection
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val videoViewModel: VideoViewModel = viewModel()
-            val audioViewModel: AudioViewModel = viewModel()
-            val storageViewModel: StorageViewModel = viewModel()
-            val themeViewModel: ThemeViewModel = viewModel()
-            val lockerViewModel: LockerViewModel = viewModel()
+            val videoViewModel: VideoViewModel = hiltViewModel()
+            val audioViewModel: AudioViewModel = hiltViewModel()
+            val storageViewModel: StorageViewModel = hiltViewModel()
+            val themeViewModel: ThemeViewModel = hiltViewModel()
+            val lockerViewModel: LockerViewModel = hiltViewModel()
             val appTheme by themeViewModel.theme.collectAsState()
             
             val isDarkTheme = when (appTheme) {
@@ -136,8 +146,8 @@ class MainActivity : FragmentActivity() {
                                 isPlayerActive = false
                                 
                                 val homeTab = when(tab) {
-                                    "videos" -> com.arslandaim.omegaplayer.ui.home.MediaTab.VIDEOS
-                                    "audios" -> com.arslandaim.omegaplayer.ui.home.MediaTab.AUDIOS
+                                    "videos" -> com.arslandaim.omegaplayer.ui.feature.library.MediaTab.VIDEOS
+                                    "audios" -> com.arslandaim.omegaplayer.ui.feature.library.MediaTab.AUDIOS
                                     else -> null
                                 }
 
@@ -146,6 +156,7 @@ class MainActivity : FragmentActivity() {
                                     audioViewModel,
                                     storageViewModel,
                                     lockerViewModel,
+                                    playbackConnection,
                                     navController,
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@composable,
@@ -239,10 +250,11 @@ fun MainScreen(
     audioViewModel: AudioViewModel,
     storageViewModel: StorageViewModel,
     lockerViewModel: LockerViewModel,
+    playbackConnection: PlaybackConnection,
     navController: NavHostController,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
-    initialTab: com.arslandaim.omegaplayer.ui.home.MediaTab? = null
+    initialTab: com.arslandaim.omegaplayer.ui.feature.library.MediaTab? = null
 ) {
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
@@ -265,79 +277,91 @@ fun MainScreen(
         // This tells the scaffold not to consume navigation bar insets globally.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NavigationBar(
+            Column(
                 modifier = Modifier.hazeChild(
                     state = hazeState,
                     style = HazeDefaults.style(
-                        backgroundColor = Color(0xFFFFFFFF),
-//                        blurRadius = 20.dp,
-//                        noiseFactor = 0.8f
+                        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
                     )
-                ),
-//                containerColor = Color.Transparent,
-                windowInsets = WindowInsets.navigationBars
+                )
             ) {
-                NavigationBarItem(
-                    icon = {
-                        val scale by animateFloatAsState(
-                            targetValue = if (pagerState.currentPage == 0) 1.25f else 1.0f,
-                            animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                            label = "HomeScale"
-                        )
-                        val iconColor by animateColorAsState(
-                            targetValue = if (pagerState.currentPage == 0) Color(0xFF121212) else Color.Gray,
-                            label = "HomeColor"
-                        )
-                        Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
-                            Icon(Icons.Default.Home, contentDescription = "Home", tint = iconColor)
+                NowPlayingBar(
+                    playbackConnection = playbackConnection,
+                    onBarClick = {
+                        val currentItem = playbackConnection.currentMediaItem.value
+                        val uri = currentItem?.localConfiguration?.uri?.toString()
+                        if (uri != null) {
+                            val encodedUri = URLEncoder.encode(uri, StandardCharsets.UTF_8.toString())
+                            navController.navigate(Screen.AudioPlayer.createRoute(encodedUri))
                         }
-                    },
-                    label = { Text("Home", modifier = Modifier.offset(y = 2.dp)) },
-                    selected = pagerState.currentPage == 0,
-                    alwaysShowLabel = false, // Makes text visible ONLY when clicked
-                    onClick = { scope.launch { pagerState.animateScrollToPage(0) } }
+                    }
                 )
-                NavigationBarItem(
-                    modifier = Modifier.background(Color.Transparent),
-                    icon = {
-                        val scale by animateFloatAsState(
-                            targetValue = if (pagerState.currentPage == 1) 1.25f else 1.0f,
-                            animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                            label = "LockerScale"
-                        )
-                        val iconColor by animateColorAsState(
-                            targetValue = if (pagerState.currentPage == 1) Color(0xFF121212) else Color.Gray,
-                            label = "LockerColor"
-                        )
-                        Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
-                            Icon(Icons.Default.Lock, contentDescription = "Locker", tint = iconColor)
-                        }
-                    },
-                    label = { Text("Locker", modifier = Modifier.offset(y = 2.dp)) },
-                    selected = pagerState.currentPage == 1,
-                    alwaysShowLabel = false, // Makes text visible ONLY when clicked
-                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } }
-                )
-                NavigationBarItem(
-                    icon = {
-                        val scale by animateFloatAsState(
-                            targetValue = if (pagerState.currentPage == 2) 1.25f else 1.0f,
-                            animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                            label = "SettingsScale"
-                        )
-                        val iconColor by animateColorAsState(
-                            targetValue = if (pagerState.currentPage == 2) Color(0xFF121212) else Color.Gray,
-                            label = "SettingsColor"
-                        )
-                        Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = iconColor)
-                        }
-                    },
-                    label = { Text("Settings", modifier = Modifier.offset(y = 2.dp)) },
-                    selected = pagerState.currentPage == 2,
-                    alwaysShowLabel = false, // Makes text visible ONLY when clicked
-                    onClick = { scope.launch { pagerState.animateScrollToPage(2) } }
-                )
+                NavigationBar(
+                    containerColor = Color.Transparent,
+                    windowInsets = WindowInsets.navigationBars
+                ) {
+                    NavigationBarItem(
+                        icon = {
+                            val scale by animateFloatAsState(
+                                targetValue = if (pagerState.currentPage == 0) 1.25f else 1.0f,
+                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+                                label = "HomeScale"
+                            )
+                            val iconColor by animateColorAsState(
+                                targetValue = if (pagerState.currentPage == 0) Color(0xFF121212) else Color.Gray,
+                                label = "HomeColor"
+                            )
+                            Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
+                                Icon(Icons.Default.Home, contentDescription = "Home", tint = iconColor)
+                            }
+                        },
+                        label = { Text("Home", modifier = Modifier.offset(y = 2.dp)) },
+                        selected = pagerState.currentPage == 0,
+                        alwaysShowLabel = false, // Makes text visible ONLY when clicked
+                        onClick = { scope.launch { pagerState.animateScrollToPage(0) } }
+                    )
+                    NavigationBarItem(
+                        modifier = Modifier.background(Color.Transparent),
+                        icon = {
+                            val scale by animateFloatAsState(
+                                targetValue = if (pagerState.currentPage == 1) 1.25f else 1.0f,
+                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+                                label = "LockerScale"
+                            )
+                            val iconColor by animateColorAsState(
+                                targetValue = if (pagerState.currentPage == 1) Color(0xFF121212) else Color.Gray,
+                                label = "LockerColor"
+                            )
+                            Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
+                                Icon(Icons.Default.Lock, contentDescription = "Locker", tint = iconColor)
+                            }
+                        },
+                        label = { Text("Locker", modifier = Modifier.offset(y = 2.dp)) },
+                        selected = pagerState.currentPage == 1,
+                        alwaysShowLabel = false, // Makes text visible ONLY when clicked
+                        onClick = { scope.launch { pagerState.animateScrollToPage(1) } }
+                    )
+                    NavigationBarItem(
+                        icon = {
+                            val scale by animateFloatAsState(
+                                targetValue = if (pagerState.currentPage == 2) 1.25f else 1.0f,
+                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+                                label = "SettingsScale"
+                            )
+                            val iconColor by animateColorAsState(
+                                targetValue = if (pagerState.currentPage == 2) Color(0xFF121212) else Color.Gray,
+                                label = "SettingsColor"
+                            )
+                            Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = iconColor)
+                            }
+                        },
+                        label = { Text("Settings", modifier = Modifier.offset(y = 2.dp)) },
+                        selected = pagerState.currentPage == 2,
+                        alwaysShowLabel = false, // Makes text visible ONLY when clicked
+                        onClick = { scope.launch { pagerState.animateScrollToPage(2) } }
+                    )
+                }
             }
         }
     ) { padding ->
@@ -356,7 +380,10 @@ fun MainScreen(
                     lockerViewModel = lockerViewModel,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
-                    onVideoClick = { videoUri -> navController.navigate(Screen.Player.createRoute(videoUri)) },
+                    onVideoClick = { videoUri ->
+                        val encodedUri = URLEncoder.encode(videoUri, StandardCharsets.UTF_8.toString())
+                        navController.navigate(Screen.Player.createRoute(encodedUri)) 
+                    },
                     onAudioClick = { audioUri ->
                         val encodedUri = URLEncoder.encode(audioUri, StandardCharsets.UTF_8.toString())
                         navController.navigate(Screen.AudioPlayer.createRoute(encodedUri))

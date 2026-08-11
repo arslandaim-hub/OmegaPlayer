@@ -10,17 +10,19 @@ import android.app.Application
 import android.os.Environment
 import android.os.StatFs
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.arslandaim.omegaplayer.data.AudioModel
 import com.arslandaim.omegaplayer.data.VideoModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
 import java.util.Locale
+import javax.inject.Inject
 import kotlin.math.log10
 import kotlin.math.pow
 
@@ -39,7 +41,10 @@ data class StorageStats(
     }
 }
 
-class StorageViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class StorageViewModel @Inject constructor(
+    application: Application
+) : AndroidViewModel(application) {
 
     private val _storageStats = MutableStateFlow(StorageStats())
     val storageStats: StateFlow<StorageStats> = _storageStats.asStateFlow()
