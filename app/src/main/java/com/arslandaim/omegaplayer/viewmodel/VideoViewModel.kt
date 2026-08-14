@@ -29,6 +29,7 @@ import com.arslandaim.omegaplayer.data.RecentPlayback
 import com.arslandaim.omegaplayer.domain.usecase.media.GetVideosUseCase
 import com.arslandaim.omegaplayer.domain.usecase.playback.GetRecentPlaybackUseCase
 import com.arslandaim.omegaplayer.data.repository.PlaybackRepository
+import com.arslandaim.omegaplayer.data.ThemePreferences
 import com.arslandaim.omegaplayer.media.PlaybackConnection
 import com.arslandaim.omegaplayer.service.PlaybackService
 import com.arslandaim.omegaplayer.util.Resource
@@ -46,7 +47,8 @@ class VideoViewModel @Inject constructor(
     private val getVideosUseCase: GetVideosUseCase,
     private val getRecentPlaybackUseCase: GetRecentPlaybackUseCase,
     private val playbackRepository: PlaybackRepository,
-    private val playbackConnection: PlaybackConnection
+    private val playbackConnection: PlaybackConnection,
+    private val themePreferences: ThemePreferences
 ) : AndroidViewModel(application) {
 
     private val _isLoading = MutableStateFlow(false)
@@ -88,6 +90,24 @@ class VideoViewModel @Inject constructor(
 
     val recentPlayback: StateFlow<List<RecentPlayback>> = getRecentPlaybackUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val fullHistory: StateFlow<List<RecentPlayback>> = playbackRepository.getAllRecentPlayback()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val isHistoryPaused: StateFlow<Boolean> = themePreferences.isHistoryPaused
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun toggleHistoryPause(paused: Boolean) {
+        viewModelScope.launch {
+            themePreferences.saveHistoryPaused(paused)
+        }
+    }
+
+    fun clearAllHistory() {
+        viewModelScope.launch {
+            playbackRepository.clearAllRecentPlayback()
+        }
+    }
 
     private val _sleepTimerActive = MutableStateFlow(false)
     val sleepTimerActive: StateFlow<Boolean> = _sleepTimerActive.asStateFlow()
@@ -212,6 +232,8 @@ class VideoViewModel @Inject constructor(
     }
 
     fun savePlaybackProgress() {
+        if (isHistoryPaused.value) return
+
         val player = playbackConnection.mediaController.value ?: return
         val mediaItem = player.currentMediaItem ?: return
         val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: return

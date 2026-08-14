@@ -28,9 +28,21 @@ class ThemeViewModel @Inject constructor(
         initialValue = AppTheme.SYSTEM
     )
 
+    val dynamicColor: StateFlow<Boolean> = themePreferences.dynamicColor.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch {
             themePreferences.saveTheme(theme)
+        }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch {
+            themePreferences.saveDynamicColor(enabled)
         }
     }
 }

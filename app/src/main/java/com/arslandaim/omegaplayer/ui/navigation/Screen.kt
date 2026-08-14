@@ -18,6 +18,7 @@ sealed class Screen(val route: String) {
     object AudioPlayer : Screen("audio_player/{audioUri}") {
         fun createRoute(audioUri: String) = "audio_player/$audioUri"
     }
+    object History : Screen("history")
     object Locker : Screen("locker")
     object Settings : Screen("settings")
 }

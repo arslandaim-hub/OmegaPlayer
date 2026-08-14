@@ -48,6 +48,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.arslandaim.omegaplayer.ui.feature.library.HomeScreen
+import com.arslandaim.omegaplayer.ui.feature.library.HistoryScreen
 import com.arslandaim.omegaplayer.ui.feature.locker.LockerScreen
 import com.arslandaim.omegaplayer.ui.navigation.Screen
 import com.arslandaim.omegaplayer.ui.feature.player.PlayerScreen
@@ -93,6 +94,7 @@ class MainActivity : FragmentActivity() {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val lockerViewModel: LockerViewModel = hiltViewModel()
             val appTheme by themeViewModel.theme.collectAsState()
+            val dynamicColor by themeViewModel.dynamicColor.collectAsState()
             
             val isDarkTheme = when (appTheme) {
                 com.arslandaim.omegaplayer.data.AppTheme.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
@@ -114,7 +116,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            OmegaPlayerTheme(appTheme = appTheme) {
+            OmegaPlayerTheme(appTheme = appTheme, dynamicColor = dynamicColor) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -234,6 +236,19 @@ class MainActivity : FragmentActivity() {
                                     }
                                 )
                             }
+                            composable(Screen.History.route) {
+                                HistoryScreen(
+                                    viewModel = videoViewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onMediaClick = { uri, type ->
+                                        if (type == "video") {
+                                            navController.navigate(Screen.Player.createRoute(uri))
+                                        } else {
+                                            navController.navigate(Screen.AudioPlayer.createRoute(uri))
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -335,6 +350,7 @@ fun MainScreen(
                     },
                     onSettingsClick = { scope.launch { pagerState.animateScrollToPage(2) } },
                     onLockerClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+                    onViewAllHistoryClick = { navController.navigate(Screen.History.route) },
                     bottomPadding = padding.calculateBottomPadding(),
                     isFocused = pagerState.currentPage == 0,
                     initialTab = initialTab
@@ -367,24 +383,22 @@ fun ModernNavigationBar(
     onTabSelected: (Int) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val isDark = isSystemInDarkTheme()
 
     Surface(
         modifier = Modifier
-            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .fillMaxWidth()
             .height(64.dp)
             .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(32.dp),
-                spotColor = if (isDark) Color.Black else Color.Gray.copy(alpha = 0.5f)
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp)
             )
-            .clip(RoundedCornerShape(32.dp)),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDark) 0.6f else 0.85f),
-        tonalElevation = 8.dp,
+            .clip(RoundedCornerShape(24.dp)),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -404,7 +418,7 @@ fun ModernNavigationBar(
                     .fillMaxHeight()
                     .padding(8.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFFFF6600).copy(alpha = 0.15f))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
             )
 
             Row(
@@ -428,7 +442,7 @@ fun ModernNavigationBar(
                     )
 
                     val color by animateColorAsState(
-                        targetValue = if (isSelected) Color(0xFFFF6600) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         label = "iconColor"
                     )
 

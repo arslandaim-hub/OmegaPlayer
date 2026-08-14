@@ -527,7 +527,7 @@ fun AudioPlayerScreen(
                                     showMoreOptions = false
                                     showSleepTimerDialog = true
                                 },
-                                leadingIcon = { Icon(Icons.Default.Timer, contentDescription = null, tint = if (sleepTimerActive) Color(0xFFFF6600) else Color.White) }
+                                leadingIcon = { Icon(Icons.Default.Timer, contentDescription = null, tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary else Color.White) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Playback Speed (${playbackSpeed}x)") },
@@ -572,7 +572,7 @@ fun AudioPlayerScreen(
         ) { padding ->
             if (controller == null) {
                 Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFFFF6600))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else {
                 val player = controller!!
@@ -632,7 +632,7 @@ fun AudioPlayerScreen(
                     WaveformVisualizer(
                         isPlaying = isPlaying,
                         modifier = Modifier.padding(vertical = 24.dp),
-                        color = Color(0xFFFF6600)
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Column {
@@ -646,7 +646,7 @@ fun AudioPlayerScreen(
                             valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
                             colors = SliderDefaults.colors(
                                 thumbColor = Color.White,
-                                activeTrackColor = Color(0xFFFF6600),
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
                                 inactiveTrackColor = Color.White.copy(alpha = 0.2f)
                             )
                         )
@@ -689,7 +689,7 @@ fun AudioPlayerScreen(
                                     else -> Icons.Default.Repeat
                                 },
                                 contentDescription = "Repeat",
-                                tint = if (repeatMode != Player.REPEAT_MODE_OFF) Color(0xFFFF6600) else Color.White.copy(alpha = 0.5f)
+                                tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.5f)
                             )
                         }
 
@@ -735,7 +735,7 @@ fun AudioPlayerScreen(
                             Icon(
                                 Icons.Default.Shuffle,
                                 contentDescription = "Shuffle",
-                                tint = if (isShuffle) Color(0xFFFF6600) else Color.White.copy(alpha = 0.5f)
+                                tint = if (isShuffle) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.5f)
                             )
                         }
                     }
@@ -766,7 +766,7 @@ fun AudioPlayerScreen(
                                 Text(
                                     audio.name, 
                                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isCurrent) Color(0xFFFF6600) else Color.White
+                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else Color.White
                                 ) 
                             },
                             supportingContent = { Text(audio.artist, color = Color.Gray) },

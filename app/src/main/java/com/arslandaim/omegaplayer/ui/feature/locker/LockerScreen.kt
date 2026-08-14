@@ -332,12 +332,11 @@ fun LockerSetupScreen(
             text = "Setup Vault",
             style = MaterialTheme.typography.headlineLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
-                // sequential blue, yellow, and red color spectrum
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFFF44336), // Red
-                        Color(0xFF2196F3), // Blue
-                        Color(0xFFFFEB3B)  // Yellow
+                        MaterialTheme.colorScheme.error,
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.secondary
                     )
                 )
             )
@@ -396,8 +395,8 @@ fun LockerSetupScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFFFFF), // Vibrant Material Yellow
-                contentColor = Color(0xFF1A1A1A)    // Dark text color
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
             Text("Initialize Vault", fontWeight = FontWeight.Bold)
@@ -454,7 +453,9 @@ fun LockedVideosList(
                 },
                 actions = {
                     IconButton(onClick = onRefresh) {
-                        Icon(Icons.Default.ReplayCircleFilled, contentDescription = "Refresh", tint = Color(0xFF87CEEB))
+                        Icon(
+                    Icons.Default.ReplayCircleFilled, contentDescription = "Refresh", tint = MaterialTheme.colorScheme.secondary
+                )
                     }
                 }
             )
@@ -582,7 +583,7 @@ fun VaultFolderItem(
                     Icons.Default.Folder,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = Color(0xFFE53935)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -609,7 +610,7 @@ fun VaultFolderItem(
                 Icon(
                     imageVector = Icons.Default.LockOpen,
                     contentDescription = "Unlock Folder",
-                    tint = Color(0xFFE53935)
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -667,7 +668,7 @@ fun VaultItem(
                     onClick = onUnlock,
                     modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
                 ) {
-                    Icon(Icons.Default.LockOpen, "Unlock", tint = Color(0xFFE53935))
+                    Icon(Icons.Default.LockOpen, "Unlock", tint = MaterialTheme.colorScheme.primary)
                 }
             }
             

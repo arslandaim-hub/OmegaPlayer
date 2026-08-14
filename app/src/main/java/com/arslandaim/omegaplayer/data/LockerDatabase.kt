@@ -111,6 +111,9 @@ interface LockerDao {
     @Query("SELECT * FROM recent_playback ORDER BY lastPlayed DESC LIMIT 20")
     fun getRecentPlaybackFlow(): Flow<List<RecentPlayback>>
 
+    @Query("SELECT * FROM recent_playback ORDER BY lastPlayed DESC")
+    fun getAllRecentPlaybackFlow(): Flow<List<RecentPlayback>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecentPlayback(recent: RecentPlayback)
 
@@ -119,6 +122,9 @@ interface LockerDao {
 
     @Query("DELETE FROM recent_playback WHERE uri = :uri")
     suspend fun deleteRecentPlayback(uri: String)
+
+    @Query("DELETE FROM recent_playback")
+    suspend fun clearAllRecentPlayback()
 }
 
 @Database(entities = [LockedVideo::class, LockerSettings::class, Playlist::class, PlaylistItem::class, RecentPlayback::class], version = 6)

@@ -14,5 +14,7 @@ interface PlaybackRepository {
     suspend fun removeFromPlaylist(playlistId: Int, uri: String)
     
     fun getRecentPlayback(): Flow<List<RecentPlayback>>
+    fun getAllRecentPlayback(): Flow<List<RecentPlayback>>
     suspend fun saveRecentPlayback(recent: RecentPlayback)
+    suspend fun clearAllRecentPlayback()
 }

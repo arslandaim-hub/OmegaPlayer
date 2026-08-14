@@ -161,7 +161,7 @@ fun RecentPlaybackItem(
                         .fillMaxWidth()
                         .height(4.dp)
                         .clip(CircleShape),
-                    color = Color(0xFFFF6600),
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
@@ -211,8 +211,8 @@ fun ModernOmegaIcon(modifier: Modifier = Modifier) {
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color(0xFF87CEEB), // Light Blue
-                        Color(0xFFFF6600)  // Orange
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.primary
                     )
                 )
             ),
@@ -221,12 +221,12 @@ fun ModernOmegaIcon(modifier: Modifier = Modifier) {
         Text(
             text = "Ω",
             style = MaterialTheme.typography.titleLarge.copy(
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Black,
                 fontSize = 24.sp,
                 textAlign = TextAlign.Center
             ),
-            modifier = Modifier.offset(y = (-1).dp) // Visual centering adjustment
+            modifier = Modifier.offset(y = (-1).dp)
         )
     }
 }
@@ -235,10 +235,10 @@ enum class MediaTab { VIDEOS, AUDIOS, PLAYLISTS }
 
 @Composable
 fun StorageVisualization(stats: StorageStats, modifier: Modifier = Modifier) {
-    val videoColor = Color(0xFFFF6600) // Orange
-    val audioColor = Color(0xFF87CEEB) // Blue
-    val otherColor = Color(0xFF71717A) // Zinc
-    val freeColor = Color(0xFFE4E4E7).copy(alpha = 0.3f)
+    val videoColor = MaterialTheme.colorScheme.primary
+    val audioColor = MaterialTheme.colorScheme.secondary
+    val otherColor = MaterialTheme.colorScheme.outline
+    val freeColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
 
     val total = stats.totalBytes.toFloat()
     if (total <= 0f) return
@@ -327,6 +327,7 @@ fun HomeScreen(
     onAudioClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onLockerClick: () -> Unit,
+    onViewAllHistoryClick: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
     isFocused: Boolean = true,
     initialTab: MediaTab? = null
@@ -1106,7 +1107,7 @@ fun HomeScreen(
                                     else if (selectedTab == MediaTab.AUDIOS) audioViewModel.setSelectedFolder(null)
                                     else selectedPlaylistForDetails = null
                                 }) {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Back",tint = Color(0xFFFF6600), modifier = Modifier.size(38.dp))
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Back",tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
                                 }
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
@@ -1121,13 +1122,12 @@ fun HomeScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
                                     text = "Omega Player",
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontSize = 24.sp,
+                                    style = MaterialTheme.typography.headlineSmall.copy(
                                         fontWeight = FontWeight.Black,
                                         brush = Brush.linearGradient(
                                             colors = listOf(
-                                                Color(0xFF87CEEB), // Light Blue
-                                                Color(0xFFFF6600)  // Orange
+                                                MaterialTheme.colorScheme.secondary,
+                                                MaterialTheme.colorScheme.primary
                                             )
                                         )
                                     )
@@ -1173,7 +1173,7 @@ fun HomeScreen(
                             Icon(
                                 Icons.Default.Search, 
                                 contentDescription = null,
-                                tint = Color(0xFFFF6600)
+                                tint = MaterialTheme.colorScheme.primary
                             ) 
                         },
                         trailingIcon = {
@@ -1185,7 +1185,7 @@ fun HomeScreen(
                         },
                         shape = RoundedCornerShape(20.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFFF6600),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = Color.Transparent,
                             focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
@@ -1202,7 +1202,7 @@ fun HomeScreen(
                         Icon(
                             if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
                             contentDescription = "Toggle View",
-                            tint = Color(0xFFFF6600)
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -1282,7 +1282,7 @@ fun HomeScreen(
                                 if (pageTab != MediaTab.PLAYLISTS) {
                                     if (recentPlayback.isNotEmpty()) {
                                         item(span = { GridItemSpan(2) }) {
-                                            RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick)
+                                            RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick, onViewAllHistoryClick)
                                         }
                                     }
                                 }
@@ -1329,7 +1329,7 @@ fun HomeScreen(
                             if (currentSelectedFolder == null && selectedPlaylistForDetails == null && pageTab != MediaTab.PLAYLISTS) {
                                 if (recentPlayback.isNotEmpty()) {
                                     item {
-                                        RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick)
+                                        RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick, onViewAllHistoryClick)
                                     }
                                 }
                             }
@@ -1457,13 +1457,13 @@ fun FolderListItem(
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = RoundedCornerShape(18.dp),
-                color = Color(0xFFFF9800).copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Folder,
                         contentDescription = null,
-                        tint = Color(0xFFFF9800),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -1540,13 +1540,13 @@ fun FolderGridItem(
             Surface(
                 modifier = Modifier.size(64.dp),
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFFFF9800).copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Folder,
                         contentDescription = null,
-                        tint = Color(0xFFFF9800),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -1595,11 +1595,11 @@ fun HomeDashboard(
                 MediaTab.entries.forEach { tab ->
                     val isSelected = selectedTab == tab
                     val background by animateColorAsState(
-                        if (isSelected) Color(0xFFFF6600) else Color.Transparent,
+                        if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                         label = "tabBg"
                     )
                     val contentColor by animateColorAsState(
-                        if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         label = "tabContent"
                     )
 
@@ -1635,15 +1635,26 @@ fun HomeDashboard(
 fun RecentPlaybackSection(
     recentPlayback: List<RecentPlayback>,
     onVideoClick: (String) -> Unit,
-    onAudioClick: (String) -> Unit
+    onAudioClick: (String) -> Unit,
+    onViewAllClick: () -> Unit
 ) {
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
-        Text(
-            text = "Continue Watching",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Continue Watching",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            TextButton(onClick = onViewAllClick) {
+                Text("View All", color = MaterialTheme.colorScheme.primary)
+            }
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
@@ -1683,10 +1694,10 @@ fun PlaylistListItem(
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFFF6600).copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = Color(0xFFFF6600))
+                    Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -2125,7 +2136,7 @@ fun VideoListItem(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (isPlaying) Color(0xFFFF6600) else MaterialTheme.colorScheme.onSurface
+                        color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -2265,7 +2276,7 @@ fun AudioListItem(
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (isPlaying) Color(0xFFFF6600) else MaterialTheme.colorScheme.onSurface
+                    color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = audio.artist,
@@ -2280,7 +2291,7 @@ fun AudioListItem(
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.PauseCircleFilled else Icons.Default.PlayCircleFilled,
                     contentDescription = "Play/Pause",
-                    tint = Color(0xFFFF6600),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 )
             }

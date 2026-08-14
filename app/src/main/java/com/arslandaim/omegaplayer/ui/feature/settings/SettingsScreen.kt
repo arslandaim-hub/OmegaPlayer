@@ -80,6 +80,7 @@ fun SettingsScreen(
     val dao = remember { LockerDatabase.getDatabase(context).lockerDao() }
     val themeViewModel: ThemeViewModel = hiltViewModel()
     val currentTheme by themeViewModel.theme.collectAsState()
+    val dynamicColorEnabled by themeViewModel.dynamicColor.collectAsState()
 
     var showChangePinDialog by remember { mutableStateOf(false) }
     var showSecurityVerification by remember { mutableStateOf(false) }
@@ -156,6 +157,21 @@ fun SettingsScreen(
                             )
                         }
                     }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ListItem(
+                            headlineContent = { Text("Dynamic Color", fontWeight = FontWeight.Medium) },
+                            supportingContent = { Text("Use Material You colors from your wallpaper") },
+                            trailingContent = {
+                                Switch(
+                                    checked = dynamicColorEnabled,
+                                    onCheckedChange = { themeViewModel.setDynamicColor(it) }
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                    }
                 }
             }
 
@@ -177,7 +193,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFFF6600))
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     },
@@ -192,8 +208,7 @@ fun SettingsScreen(
                             },
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Change",
-                                color = Color(0xFFFF6600),)
+                            Text("Change")
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -218,7 +233,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Fingerprint, contentDescription = null, tint = Color(0xFFFF6600))
+                                Icon(Icons.Default.Fingerprint, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     },
@@ -272,8 +287,8 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.AutoMode, contentDescription = null, tint =Color(0xFFFF6600))
-                                }
+                                Icon(Icons.Default.AutoMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
                             }
                         },
                         trailingContent = {
@@ -312,7 +327,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFFFF6600))
+                                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     },
@@ -337,7 +352,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Code, contentDescription = null, tint = Color(0xFFFF6600))
+                                Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     },

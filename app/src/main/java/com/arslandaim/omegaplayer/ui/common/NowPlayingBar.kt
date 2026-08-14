@@ -54,14 +54,6 @@ fun NowPlayingBar(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
-    // Adaptive Color State
-    var dominantColor by remember { mutableStateOf(Color.Transparent) }
-    val animatedDominantColor by animateColorAsState(
-        targetValue = dominantColor,
-        animationSpec = tween(1000),
-        label = "adaptiveTint"
-    )
-
     // Playback Position for Progress Bar
     var position by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
@@ -72,34 +64,6 @@ fun NowPlayingBar(
             position = player.currentPosition
             duration = player.duration.coerceAtLeast(0L)
             delay(500)
-        }
-    }
-
-    // Extract palette from artwork
-    LaunchedEffect(currentMediaItem) {
-        val artworkUri = currentMediaItem?.mediaMetadata?.artworkUri
-        if (artworkUri != null) {
-            val loader = context.imageLoader
-            val request = ImageRequest.Builder(context)
-                .data(artworkUri)
-                .allowHardware(false)
-                .build()
-            
-            val result = loader.execute(request)
-            if (result is SuccessResult) {
-                val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
-                if (bitmap != null) {
-                    val palette = Palette.from(bitmap).generate()
-                    val color = palette.getVibrantColor(
-                        palette.getMutedColor(
-                            palette.getDominantColor(0x00000000)
-                        )
-                    )
-                    dominantColor = Color(color).copy(alpha = 0.15f)
-                }
-            }
-        } else {
-            dominantColor = Color.Transparent
         }
     }
 
@@ -120,7 +84,6 @@ fun NowPlayingBar(
         modifier = modifier
     ) {
         val metadata = currentMediaItem?.mediaMetadata
-    val isDarkTheme = isSystemInDarkTheme()
         
     Surface(
         modifier = Modifier
@@ -128,11 +91,10 @@ fun NowPlayingBar(
             .height(72.dp)
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = if (isDarkTheme) Color.Black else Color.Gray.copy(alpha = 0.3f)
+                elevation = 4.dp,
+                shape = RoundedCornerShape(16.dp)
             )
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onBarClick() }
             .pointerInput(Unit) {
                     var totalDragX = 0f
@@ -162,11 +124,11 @@ fun NowPlayingBar(
                         }
                     )
                 },
-            color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.4f else 0.8f),
-            tonalElevation = 0.dp,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
             border = androidx.compose.foundation.BorderStroke(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                color = MaterialTheme.colorScheme.outlineVariant
             )
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -178,22 +140,11 @@ fun NowPlayingBar(
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
                             .height(2.dp),
-                        color = Color(0xFFFF6600).copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                         trackColor = Color.Transparent,
                         strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
                 }
-
-                // Adaptive Tint Layer
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(animatedDominantColor, Color.Transparent)
-                            )
-                        )
-                )
 
                 Row(
                     modifier = Modifier
@@ -265,7 +216,7 @@ fun NowPlayingBar(
                         },
                         modifier = Modifier.size(48.dp),
                         colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = Color(0xFFFF6600)
+                            contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(

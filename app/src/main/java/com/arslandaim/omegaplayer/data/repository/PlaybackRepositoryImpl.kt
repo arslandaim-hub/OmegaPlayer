@@ -37,7 +37,13 @@ class PlaybackRepositoryImpl @Inject constructor(
 
     override fun getRecentPlayback(): Flow<List<RecentPlayback>> = lockerDao.getRecentPlaybackFlow()
 
+    override fun getAllRecentPlayback(): Flow<List<RecentPlayback>> = lockerDao.getAllRecentPlaybackFlow()
+
     override suspend fun saveRecentPlayback(recent: RecentPlayback) {
         lockerDao.insertRecentPlayback(recent)
+    }
+
+    override suspend fun clearAllRecentPlayback() {
+        lockerDao.clearAllRecentPlayback()
     }
 }
