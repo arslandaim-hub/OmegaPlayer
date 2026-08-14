@@ -50,6 +50,7 @@ import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.arslandaim.omegaplayer.data.LockerDatabase
 import com.arslandaim.omegaplayer.data.LockerSettings
+import com.arslandaim.omegaplayer.util.SecurityUtils
 import com.arslandaim.omegaplayer.ui.feature.library.formatDuration
 import com.arslandaim.omegaplayer.ui.feature.settings.authenticateBiometric
 import com.arslandaim.omegaplayer.ui.common.ModernLoadingDialog
@@ -209,7 +210,8 @@ fun LockerAuthScreen(
                                     "OK" -> {
                                         scope.launch {
                                             val settings = viewModel.getSettings()
-                                            if (settings?.pin == pinInput) {
+                                            val hashedInput = SecurityUtils.hashString(pinInput)
+                                            if (settings?.pin == hashedInput) {
                                                 viewModel.unlock(true)
                                             } else {
                                                 Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()
@@ -223,7 +225,8 @@ fun LockerAuthScreen(
                                             // Auto verify
                                             scope.launch {
                                                 val settings = viewModel.getSettings()
-                                                if (settings?.pin == pinInput) {
+                                                val hashedInput = SecurityUtils.hashString(pinInput)
+                                                if (settings?.pin == hashedInput) {
                                                     viewModel.unlock(true)
                                                 } else {
                                                     Toast.makeText(context, "Incorrect PIN", Toast.LENGTH_SHORT).show()

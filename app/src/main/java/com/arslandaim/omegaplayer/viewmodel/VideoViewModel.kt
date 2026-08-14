@@ -31,6 +31,7 @@ import com.arslandaim.omegaplayer.domain.usecase.playback.GetRecentPlaybackUseCa
 import com.arslandaim.omegaplayer.data.repository.PlaybackRepository
 import com.arslandaim.omegaplayer.media.PlaybackConnection
 import com.arslandaim.omegaplayer.service.PlaybackService
+import com.arslandaim.omegaplayer.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -59,16 +60,30 @@ class VideoViewModel @Inject constructor(
     val isBackgroundPlayEnabled: StateFlow<Boolean> = _isBackgroundPlayEnabled.asStateFlow()
 
     val isPlaying: StateFlow<Boolean> = playbackConnection.isPlaying
+    val mediaController: StateFlow<androidx.media3.session.MediaController?> = playbackConnection.mediaController
 
     private val _selectedFolder = MutableStateFlow<String?>(null)
     val selectedFolder: StateFlow<String?> = _selectedFolder.asStateFlow()
 
+    private val _videoError = MutableStateFlow<String?>(null)
+    val videoError: StateFlow<String?> = _videoError.asStateFlow()
+
     val videos: StateFlow<List<VideoModel>> = getVideosUseCase()
-        .onStart { _isLoading.value = true }
-        .onEach { 
-            _isLoading.value = false
-            preloadThumbnails(getApplication(), it)
+        .onEach { resource ->
+            when (resource) {
+                is Resource.Loading -> _isLoading.value = true
+                is Resource.Success -> {
+                    _isLoading.value = false
+                    _videoError.value = null
+                    preloadThumbnails(getApplication(), resource.data)
+                }
+                is Resource.Error -> {
+                    _isLoading.value = false
+                    _videoError.value = resource.message
+                }
+            }
         }
+        .map { resource -> if (resource is Resource.Success) resource.data else emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentPlayback: StateFlow<List<RecentPlayback>> = getRecentPlaybackUseCase()
@@ -98,7 +113,7 @@ class VideoViewModel @Inject constructor(
                 delay(1000)
                 _sleepTimerTimeLeft.value -= 1000
             }
-            _exoPlayer?.pause()
+            playbackConnection.mediaController.value?.pause()
             _sleepTimerActive.value = false
         }
     }
@@ -114,57 +129,6 @@ class VideoViewModel @Inject constructor(
         if (folder == null) emptyList()
         else videoList.filter { (File(it.path).parentFile?.name ?: "Internal") == folder }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    private var _exoPlayer: ExoPlayer? = null
-    
-    @androidx.annotation.OptIn(UnstableApi::class)
-    fun getPlayer(context: Context): ExoPlayer {
-        if (_exoPlayer == null) {
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                .build()
-            
-            val loadControl = DefaultLoadControl.Builder()
-                .setBufferDurationsMs(15_000, 50_000, 500, 1_000)
-                .setPrioritizeTimeOverSizeThresholds(true)
-                .build()
-
-            _exoPlayer = ExoPlayer.Builder(context.applicationContext)
-                .setAudioAttributes(audioAttributes, true)
-                .setHandleAudioBecomingNoisy(true)
-                .setLoadControl(loadControl)
-                .build().apply {
-                    setSeekParameters(SeekParameters.CLOSEST_SYNC)
-                    addListener(object : Player.Listener {
-                        override fun onIsPlayingChanged(isPlaying: Boolean) {
-                            if (isPlaying && _isBackgroundPlayEnabled.value) {
-                                startPlaybackService(context)
-                            }
-                            if (!isPlaying) {
-                                savePlaybackProgress()
-                            }
-                        }
-                    })
-                }
-            PlaybackService.playerInstance = _exoPlayer
-        }
-        return _exoPlayer!!
-    }
-
-    @androidx.annotation.OptIn(UnstableApi::class)
-    private fun startPlaybackService(context: Context) {
-        try {
-            val intent = Intent(context.applicationContext, PlaybackService::class.java)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.applicationContext.startForegroundService(intent)
-            } else {
-                context.applicationContext.startService(intent)
-            }
-        } catch (e: Exception) {
-            Log.e("VideoViewModel", "Failed to start PlaybackService", e)
-        }
-    }
 
     @androidx.annotation.OptIn(UnstableApi::class)
     fun toggleBackgroundPlay(context: Context, enabled: Boolean) {
@@ -187,16 +151,10 @@ class VideoViewModel @Inject constructor(
     @androidx.annotation.OptIn(UnstableApi::class)
     override fun onCleared() {
         super.onCleared()
-        // Professional approach: don't release if background play is enabled or service is active
-        if (!_isBackgroundPlayEnabled.value) {
-            _exoPlayer?.release()
-            _exoPlayer = null
-            PlaybackService.playerInstance = null
-        }
     }
 
     fun stopIfPlaying(uri: Uri) {
-        _exoPlayer?.let { player ->
+        playbackConnection.mediaController.value?.let { player ->
             val currentUri = player.currentMediaItem?.localConfiguration?.uri
             if (currentUri == uri) {
                 player.stop()
@@ -206,7 +164,7 @@ class VideoViewModel @Inject constructor(
     }
 
     fun stopIfPlaying(uris: List<Uri>) {
-        _exoPlayer?.let { player ->
+        playbackConnection.mediaController.value?.let { player ->
             val currentUri = player.currentMediaItem?.localConfiguration?.uri
             if (currentUri != null && uris.contains(currentUri)) {
                 player.stop()
@@ -254,7 +212,7 @@ class VideoViewModel @Inject constructor(
     }
 
     fun savePlaybackProgress() {
-        val player = _exoPlayer ?: return
+        val player = playbackConnection.mediaController.value ?: return
         val mediaItem = player.currentMediaItem ?: return
         val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: return
         val video = videos.value.find { it.uri.toString() == currentUri } ?: return

@@ -10,33 +10,36 @@ import android.os.Bundle
 import android.content.Intent
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.fragment.app.FragmentActivity
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -160,6 +163,7 @@ class MainActivity : FragmentActivity() {
                                     navController,
                                     sharedTransitionScope = this@SharedTransitionLayout,
                                     animatedVisibilityScope = this@composable,
+                                    isDarkTheme = isDarkTheme,
                                     initialTab = homeTab
                                 )
                             }
@@ -254,6 +258,7 @@ fun MainScreen(
     navController: NavHostController,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    isDarkTheme: Boolean,
     initialTab: com.arslandaim.omegaplayer.ui.feature.library.MediaTab? = null
 ) {
     val pagerState = rememberPagerState(pageCount = { 3 })
@@ -281,7 +286,7 @@ fun MainScreen(
                 modifier = Modifier.hazeChild(
                     state = hazeState,
                     style = HazeDefaults.style(
-                        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.5f else 0.7f),
                     )
                 )
             ) {
@@ -296,72 +301,12 @@ fun MainScreen(
                         }
                     }
                 )
-                NavigationBar(
-                    containerColor = Color.Transparent,
-                    windowInsets = WindowInsets.navigationBars
-                ) {
-                    NavigationBarItem(
-                        icon = {
-                            val scale by animateFloatAsState(
-                                targetValue = if (pagerState.currentPage == 0) 1.25f else 1.0f,
-                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                                label = "HomeScale"
-                            )
-                            val iconColor by animateColorAsState(
-                                targetValue = if (pagerState.currentPage == 0) Color(0xFF121212) else Color.Gray,
-                                label = "HomeColor"
-                            )
-                            Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
-                                Icon(Icons.Default.Home, contentDescription = "Home", tint = iconColor)
-                            }
-                        },
-                        label = { Text("Home", modifier = Modifier.offset(y = 2.dp)) },
-                        selected = pagerState.currentPage == 0,
-                        alwaysShowLabel = false, // Makes text visible ONLY when clicked
-                        onClick = { scope.launch { pagerState.animateScrollToPage(0) } }
-                    )
-                    NavigationBarItem(
-                        modifier = Modifier.background(Color.Transparent),
-                        icon = {
-                            val scale by animateFloatAsState(
-                                targetValue = if (pagerState.currentPage == 1) 1.25f else 1.0f,
-                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                                label = "LockerScale"
-                            )
-                            val iconColor by animateColorAsState(
-                                targetValue = if (pagerState.currentPage == 1) Color(0xFF121212) else Color.Gray,
-                                label = "LockerColor"
-                            )
-                            Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
-                                Icon(Icons.Default.Lock, contentDescription = "Locker", tint = iconColor)
-                            }
-                        },
-                        label = { Text("Locker", modifier = Modifier.offset(y = 2.dp)) },
-                        selected = pagerState.currentPage == 1,
-                        alwaysShowLabel = false, // Makes text visible ONLY when clicked
-                        onClick = { scope.launch { pagerState.animateScrollToPage(1) } }
-                    )
-                    NavigationBarItem(
-                        icon = {
-                            val scale by animateFloatAsState(
-                                targetValue = if (pagerState.currentPage == 2) 1.25f else 1.0f,
-                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                                label = "SettingsScale"
-                            )
-                            val iconColor by animateColorAsState(
-                                targetValue = if (pagerState.currentPage == 2) Color(0xFF121212) else Color.Gray,
-                                label = "SettingsColor"
-                            )
-                            Box(modifier = Modifier.scale(scale).offset(y = 1.dp)) {
-                                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = iconColor)
-                            }
-                        },
-                        label = { Text("Settings", modifier = Modifier.offset(y = 2.dp)) },
-                        selected = pagerState.currentPage == 2,
-                        alwaysShowLabel = false, // Makes text visible ONLY when clicked
-                        onClick = { scope.launch { pagerState.animateScrollToPage(2) } }
-                    )
-                }
+                ModernNavigationBar(
+                    selectedTab = pagerState.currentPage,
+                    onTabSelected = { page ->
+                        scope.launch { pagerState.animateScrollToPage(page) }
+                    }
+                )
             }
         }
     ) { padding ->
@@ -411,6 +356,119 @@ fun MainScreen(
                     bottomPadding = padding.calculateBottomPadding(),
                     isFocused = pagerState.currentPage == 2
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernNavigationBar(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val isDark = isSystemInDarkTheme()
+
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .fillMaxWidth()
+            .height(64.dp)
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(32.dp),
+                spotColor = if (isDark) Color.Black else Color.Gray.copy(alpha = 0.5f)
+            )
+            .clip(RoundedCornerShape(32.dp)),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDark) 0.6f else 0.85f),
+        tonalElevation = 8.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val tabWidth = maxWidth / 3
+            
+            // Sliding Background Indicator
+            val indicatorOffset by animateDpAsState(
+                targetValue = tabWidth * selectedTab,
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
+                label = "indicator"
+            )
+
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
+                    .width(tabWidth)
+                    .fillMaxHeight()
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFFFF6600).copy(alpha = 0.15f))
+            )
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val tabs = listOf(
+                    Triple("Home", Icons.Default.Home, 0),
+                    Triple("Locker", Icons.Default.Lock, 1),
+                    Triple("Settings", Icons.Default.Settings, 2)
+                )
+
+                tabs.forEach { (label, icon, index) ->
+                    val isSelected = selectedTab == index
+                    
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.2f else 1.0f,
+                        animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+                        label = "iconScale"
+                    )
+
+                    val color by animateColorAsState(
+                        targetValue = if (isSelected) Color(0xFFFF6600) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = "iconColor"
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable {
+                                if (!isSelected) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onTabSelected(index)
+                                }
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            modifier = Modifier
+                                .size(26.dp)
+                                .scale(scale),
+                            tint = color
+                        )
+                        
+                        AnimatedVisibility(
+                            visible = isSelected,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = color,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }

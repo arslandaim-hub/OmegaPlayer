@@ -59,6 +59,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaController
 import androidx.media3.ui.PlayerView
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -87,6 +88,7 @@ fun PlayerScreen(
     val powerManager = remember { context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager }
     
     // Scoped State from ViewModel
+    val mediaController by viewModel.mediaController.collectAsStateWithLifecycle()
     val isBackgroundPlayEnabled by viewModel.isBackgroundPlayEnabled.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val sleepTimerActive by viewModel.sleepTimerActive.collectAsStateWithLifecycle()
@@ -112,8 +114,6 @@ fun PlayerScreen(
         delay(400)
         isTransitionComplete = true
     }
-
-    val exoPlayer = remember { viewModel.getPlayer(context) }
 
     // MX Player States (Local to this session)
     var volume by remember { mutableFloatStateOf(0.5f) }
@@ -146,22 +146,22 @@ fun PlayerScreen(
     // Use rememberUpdatedState for stable reference in observers/disposables
     val currentBackgroundPlay = rememberUpdatedState(isBackgroundPlayEnabled)
 
-    LaunchedEffect(videoUri) {
+    LaunchedEffect(videoUri, mediaController) {
+        val player = mediaController ?: return@LaunchedEffect
         val newUri = Uri.parse(videoUri)
-        val currentUri = exoPlayer.currentMediaItem?.localConfiguration?.uri
+        val currentUri = player.currentMediaItem?.localConfiguration?.uri
         if (currentUri != newUri) {
             playbackError = null
-            exoPlayer.stop()
-            exoPlayer.clearMediaItems()
-            exoPlayer.setMediaItem(MediaItem.fromUri(newUri))
-            // Exact seek can be slow on huge files; use logic from ViewModel's CLOSEST_SYNC 
-            // but ensure we start at the beginning for new videos
-            exoPlayer.prepare()
+            player.stop()
+            player.clearMediaItems()
+            player.setMediaItem(MediaItem.fromUri(newUri))
+            player.prepare()
         }
-        exoPlayer.playWhenReady = true
+        player.playWhenReady = true
     }
 
-    DisposableEffect(exoPlayer) {
+    DisposableEffect(mediaController) {
+        val player = mediaController ?: return@DisposableEffect onDispose {}
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 val errorType = when (error.errorCode) {
@@ -176,8 +176,8 @@ fun PlayerScreen(
                 // Auto-retry once for common transient errors
                 if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
                     error.errorCode == PlaybackException.ERROR_CODE_TIMEOUT) {
-                    exoPlayer.prepare()
-                    exoPlayer.play()
+                    player.prepare()
+                    player.play()
                 }
             }
             override fun onPlaybackStateChanged(state: Int) {
@@ -186,14 +186,15 @@ fun PlayerScreen(
                 }
             }
         }
-        exoPlayer.addListener(listener)
+        player.addListener(listener)
         onDispose {
-            exoPlayer.removeListener(listener)
+            player.removeListener(listener)
         }
     }
 
     // Handles Backgrounding (Home Button)
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, mediaController) {
+        val player = mediaController
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) {
                 val isInteractive = powerManager.isInteractive
@@ -203,14 +204,14 @@ fun PlayerScreen(
                         if (isInteractive) {
                             // User minimized app while locked -> STOP
                             viewModel.toggleBackgroundPlay(context, false)
-                            exoPlayer.pause()
+                            player?.pause()
                         } else {
                             // Screen turned off while locked -> CONTINUE
                             // We do nothing, allowing the service to take over
                         }
                     } else {
                         // Not locked, background play disabled -> PAUSE
-                        exoPlayer.pause()
+                        player?.pause()
                     }
                 }
             }
@@ -249,7 +250,7 @@ fun PlayerScreen(
             viewModel.savePlaybackProgress()
             
             if (!currentBackgroundPlay.value) {
-                exoPlayer.pause()
+                mediaController?.pause()
             }
         }
     }
@@ -283,10 +284,12 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(exoPlayer) {
+    LaunchedEffect(mediaController) {
         while (true) {
-            currentPosition = exoPlayer.currentPosition
-            duration = exoPlayer.duration
+            mediaController?.let {
+                currentPosition = it.currentPosition
+                duration = it.duration
+            }
             delay(500.milliseconds)
         }
     }
@@ -300,11 +303,12 @@ fun PlayerScreen(
                     factory = { ctx ->
                         val view = android.view.LayoutInflater.from(ctx).inflate(com.arslandaim.omegaplayer.R.layout.player_view, null) as PlayerView
                         view.apply {
-                            player = exoPlayer
+                            player = mediaController
                             // TextureView is already set via XML for smooth transitions
                         }
                     },
                     update = { playerView ->
+                        playerView.player = mediaController
                         playerView.resizeMode = when (aspectRatio) {
                             1 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                             2 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -349,21 +353,23 @@ fun PlayerScreen(
                         detectTapGestures(
                             onTap = { isControlsVisible = !isControlsVisible },
                             onDoubleTap = { offset ->
+                                val player = mediaController ?: return@detectTapGestures
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 if (offset.x < size.width / 2) {
-                                    exoPlayer.seekBack()
+                                    player.seekBack()
                                     showSeekBackwardAnimation = true
                                 } else {
-                                    exoPlayer.seekForward()
+                                    player.seekForward()
                                     showSeekForwardAnimation = true
                                 }
                             },
                             onLongPress = {
-                                if (exoPlayer.isPlaying) {
-                                    exoPlayer.pause()
+                                val player = mediaController ?: return@detectTapGestures
+                                if (player.isPlaying) {
+                                    player.pause()
                                     showPlayPausePulse = false
                                 } else {
-                                    exoPlayer.play()
+                                    player.play()
                                     showPlayPausePulse = true
                                 }
                                 pulseTrigger++
@@ -381,7 +387,7 @@ fun PlayerScreen(
                             },
                             onDragEnd = {
                                 if (isSeekHUDVisible) {
-                                    exoPlayer.seekTo(exoPlayer.currentPosition + seekOffsetHUD)
+                                    mediaController?.let { it.seekTo(it.currentPosition + seekOffsetHUD) }
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }
                                 isSeekHUDVisible = false
@@ -413,7 +419,7 @@ fun PlayerScreen(
                                         if (abs(volume - oldVolume) > 0.05f) {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         }
-                                        exoPlayer.volume = volume
+                                        mediaController?.volume = volume
                                         isVolumeVisible = true
                                     }
                                 }
@@ -501,7 +507,7 @@ fun PlayerScreen(
                     .haze(hazeState)
             ) {
                 PlayerControls(
-                    exoPlayer = exoPlayer,
+                    player = mediaController,
                     videoName = videoName,
                     currentPosition = currentPosition,
                     duration = duration,
@@ -511,7 +517,7 @@ fun PlayerScreen(
                     onBack = onBack,
                     onSpeedChange = { speed ->
                         playbackSpeed = speed
-                        exoPlayer.setPlaybackSpeed(speed)
+                        mediaController?.setPlaybackSpeed(speed)
                     },
                     onRotationChange = {
                         isLandscape = !isLandscape
@@ -664,8 +670,8 @@ fun PlayerScreen(
                 error = playbackError!!,
                 onRetry = {
                     playbackError = null
-                    exoPlayer.prepare()
-                    exoPlayer.play()
+                    mediaController?.prepare()
+                    mediaController?.play()
                 }
             )
         }
@@ -734,7 +740,7 @@ fun formatDuration(durationMs: Long): String {
 
 @Composable
 fun PlayerControls(
-    exoPlayer: Player,
+    player: Player?,
     videoName: String,
     currentPosition: Long,
     duration: Long,
@@ -826,19 +832,19 @@ fun PlayerControls(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(40.dp)
         ) {
-            IconButton(onClick = { exoPlayer.seekBack() }) {
+            IconButton(onClick = { player?.seekBack() }) {
                 Icon(Icons.Default.SkipPrevious, contentDescription = "Prev", tint = Color.White, modifier = Modifier.size(48.dp))
             }
             IconButton(
-                onClick = { if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play() },
+                onClick = { if (player?.isPlaying == true) player.pause() else player?.play() },
                 modifier = Modifier.size(80.dp).background(Color.White.copy(alpha = 0.1f), CircleShape)
             ) {
                 Icon(
-                    if (exoPlayer.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    if (player?.isPlaying == true) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = "Play", tint = Color.White, modifier = Modifier.size(56.dp)
                 )
             }
-            IconButton(onClick = { exoPlayer.seekForward() }) {
+            IconButton(onClick = { player?.seekForward() }) {
                 Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(48.dp))
             }
         }
@@ -849,7 +855,7 @@ fun PlayerControls(
                 Text(formatTime(currentPosition), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Slider(
                     value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                    onValueChange = { exoPlayer.seekTo((it * duration).toLong()) },
+                    onValueChange = { player?.seekTo((it * duration).toLong()) },
                     modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                     colors = SliderDefaults.colors(
                         thumbColor = Color.White,
@@ -864,8 +870,11 @@ fun PlayerControls(
                 IconButton(onClick = onAspectRatioToggle) {
                     Icon(when(aspectRatio) { 1 -> Icons.Default.Fullscreen; 2 -> Icons.Default.AspectRatio; else -> Icons.Default.FitScreen }, null, tint = Color.White)
                 }
-                TextButton(onClick = { onSpeedChange(if (exoPlayer.playbackParameters.speed >= 2f) 1f else exoPlayer.playbackParameters.speed + 0.5f) }) {
-                    Text("${exoPlayer.playbackParameters.speed}x", color = Color.White, fontWeight = FontWeight.Bold)
+                TextButton(onClick = { 
+                    val currentSpeed = player?.playbackParameters?.speed ?: 1f
+                    onSpeedChange(if (currentSpeed >= 2f) 1f else currentSpeed + 0.5f) 
+                }) {
+                    Text("${player?.playbackParameters?.speed ?: 1f}x", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }

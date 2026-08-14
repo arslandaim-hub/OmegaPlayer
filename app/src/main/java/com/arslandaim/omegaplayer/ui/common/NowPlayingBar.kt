@@ -6,6 +6,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -118,15 +120,21 @@ fun NowPlayingBar(
         modifier = modifier
     ) {
         val metadata = currentMediaItem?.mediaMetadata
+    val isDarkTheme = isSystemInDarkTheme()
         
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp) // Slightly taller for premium feel
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .clickable { onBarClick() }
-                .pointerInput(Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = if (isDarkTheme) Color.Black else Color.Gray.copy(alpha = 0.3f)
+            )
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onBarClick() }
+            .pointerInput(Unit) {
                     var totalDragX = 0f
                     var totalDragY = 0f
                     detectDragGestures(
@@ -137,14 +145,11 @@ fun NowPlayingBar(
                         },
                         onDragEnd = {
                             if (totalDragY < -100f) {
-                                // Swipe Up -> Open Player
                                 onBarClick()
                             } else if (totalDragX > 150f) {
-                                // Swipe Right -> Previous
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 mediaController?.seekToPrevious()
                             } else if (totalDragX < -150f) {
-                                // Swipe Left -> Next
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 mediaController?.seekToNext()
                             }
@@ -157,10 +162,28 @@ fun NowPlayingBar(
                         }
                     )
                 },
-            color = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp).copy(alpha = 0.8f),
-            tonalElevation = 2.dp
+            color = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.4f else 0.8f),
+            tonalElevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            )
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                // Micro Progress Bar at the top edge
+                if (duration > 0) {
+                    LinearProgressIndicator(
+                        progress = { position.toFloat() / duration.toFloat() },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(2.dp),
+                        color = Color(0xFFFF6600).copy(alpha = 0.8f),
+                        trackColor = Color.Transparent,
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                }
+
                 // Adaptive Tint Layer
                 Box(
                     modifier = Modifier
@@ -175,7 +198,7 @@ fun NowPlayingBar(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Animated Artwork
@@ -229,8 +252,8 @@ fun NowPlayingBar(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Cut",
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     }
 
@@ -240,8 +263,9 @@ fun NowPlayingBar(
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             if (isPlaying) mediaController?.pause() else mediaController?.play()
                         },
+                        modifier = Modifier.size(48.dp),
                         colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
+                            contentColor = Color(0xFFFF6600)
                         )
                     ) {
                         Icon(
@@ -250,20 +274,6 @@ fun NowPlayingBar(
                             modifier = Modifier.size(32.dp)
                         )
                     }
-                }
-
-                // Mini Progress Bar
-                if (duration > 0) {
-                    LinearProgressIndicator(
-                        progress = { position.toFloat() / duration.toFloat() },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(2.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        trackColor = Color.Transparent,
-                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                    )
                 }
             }
         }

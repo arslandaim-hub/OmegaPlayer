@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import com.arslandaim.omegaplayer.data.LockedVideo
 import com.arslandaim.omegaplayer.data.LockerDao
 import com.arslandaim.omegaplayer.data.LockerSettings
+import com.arslandaim.omegaplayer.util.SecurityUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -90,7 +91,11 @@ class LockerViewModel @Inject constructor(
 
     fun saveSettings(settings: LockerSettings) {
         viewModelScope.launch {
-            dao.saveSettings(settings)
+            val hashedSettings = settings.copy(
+                pin = SecurityUtils.hashString(settings.pin),
+                securityAnswer = SecurityUtils.hashString(settings.securityAnswer.lowercase().trim())
+            )
+            dao.saveSettings(hashedSettings)
             _pinState.value = PinState.Unlocked
         }
     }

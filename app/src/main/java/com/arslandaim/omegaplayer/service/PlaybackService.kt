@@ -21,16 +21,12 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
 
-    companion object {
-        var playerInstance: ExoPlayer? = null
-    }
-
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
         super.onCreate()
         
-        val player = playerInstance ?: ExoPlayer.Builder(this)
+        val player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 androidx.media3.common.AudioAttributes.Builder()
                     .setUsage(androidx.media3.common.C.USAGE_MEDIA)

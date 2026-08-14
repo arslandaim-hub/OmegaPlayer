@@ -24,6 +24,7 @@ import com.arslandaim.omegaplayer.domain.usecase.media.GetVideosUseCase
 import com.arslandaim.omegaplayer.domain.usecase.playback.GetRecentPlaybackUseCase
 import com.arslandaim.omegaplayer.domain.usecase.playback.PlaylistUseCases
 import com.arslandaim.omegaplayer.media.PlaybackConnection
+import com.arslandaim.omegaplayer.util.Resource
 import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -56,9 +57,24 @@ class AudioViewModel @Inject constructor(
     val isPlaying: StateFlow<Boolean> = playbackConnection.isPlaying
     val mediaController: StateFlow<MediaController?> = playbackConnection.mediaController
 
+    private val _audioError = MutableStateFlow<String?>(null)
+    val audioError: StateFlow<String?> = _audioError.asStateFlow()
+
     val audios: StateFlow<List<AudioModel>> = getAudiosUseCase()
-        .onStart { _isLoading.value = true }
-        .onEach { _isLoading.value = false }
+        .onEach { resource ->
+            when (resource) {
+                is Resource.Loading -> _isLoading.value = true
+                is Resource.Success -> {
+                    _isLoading.value = false
+                    _audioError.value = null
+                }
+                is Resource.Error -> {
+                    _isLoading.value = false
+                    _audioError.value = resource.message
+                }
+            }
+        }
+        .map { resource -> if (resource is Resource.Success) resource.data else emptyList() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val playlists: StateFlow<List<Playlist>> = playlistUseCases.getPlaylists()
@@ -73,10 +89,14 @@ class AudioViewModel @Inject constructor(
     private val _sleepTimerTimeLeft = MutableStateFlow(0L)
     val sleepTimerTimeLeft: StateFlow<Long> = _sleepTimerTimeLeft.asStateFlow()
 
+    private val _stopAfterCurrent = MutableStateFlow(false)
+    val stopAfterCurrent: StateFlow<Boolean> = _stopAfterCurrent.asStateFlow()
+
     private var sleepTimerJob: kotlinx.coroutines.Job? = null
 
     fun setSleepTimer(minutes: Int) {
         sleepTimerJob?.cancel()
+        _stopAfterCurrent.value = false
         if (minutes <= 0) {
             _sleepTimerActive.value = false
             _sleepTimerTimeLeft.value = 0
@@ -92,6 +112,30 @@ class AudioViewModel @Inject constructor(
                 _sleepTimerTimeLeft.value -= 1000
             }
             playbackConnection.pause()
+            _sleepTimerActive.value = false
+        }
+    }
+
+    fun setStopAfterCurrent(enabled: Boolean) {
+        _stopAfterCurrent.value = enabled
+        if (enabled) {
+            _sleepTimerActive.value = true
+            _sleepTimerTimeLeft.value = 0
+            sleepTimerJob?.cancel()
+            
+            // Wire up listener to stop when media item changes
+            val controller = playbackConnection.mediaController.value ?: return
+            controller.addListener(object : androidx.media3.common.Player.Listener {
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    if (reason == androidx.media3.common.Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && _stopAfterCurrent.value) {
+                        controller.pause()
+                        _stopAfterCurrent.value = false
+                        _sleepTimerActive.value = false
+                        controller.removeListener(this)
+                    }
+                }
+            })
+        } else {
             _sleepTimerActive.value = false
         }
     }

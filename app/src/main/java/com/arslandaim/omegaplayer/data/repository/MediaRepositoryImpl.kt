@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.arslandaim.omegaplayer.data.AudioModel
 import com.arslandaim.omegaplayer.data.VideoModel
+import com.arslandaim.omegaplayer.util.Resource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -29,10 +30,7 @@ class MediaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : MediaRepository {
 
-    private val _audios = MutableStateFlow<List<AudioModel>>(emptyList())
-    private val _videos = MutableStateFlow<List<VideoModel>>(emptyList())
-
-    override fun getAudios(): Flow<List<AudioModel>> = callbackFlow {
+    override fun getAudios(): Flow<Resource<List<AudioModel>>> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
                 launch { trySend(fetchAudios()) }
@@ -43,13 +41,14 @@ class MediaRepositoryImpl @Inject constructor(
             true,
             observer
         )
+        trySend(Resource.Loading)
         trySend(fetchAudios())
         awaitClose {
             context.contentResolver.unregisterContentObserver(observer)
         }
     }.flowOn(Dispatchers.IO)
 
-    override fun getVideos(): Flow<List<VideoModel>> = callbackFlow {
+    override fun getVideos(): Flow<Resource<List<VideoModel>>> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
                 launch { trySend(fetchVideos()) }
@@ -60,6 +59,7 @@ class MediaRepositoryImpl @Inject constructor(
             true,
             observer
         )
+        trySend(Resource.Loading)
         trySend(fetchVideos())
         awaitClose {
             context.contentResolver.unregisterContentObserver(observer)
@@ -67,11 +67,11 @@ class MediaRepositoryImpl @Inject constructor(
     }.flowOn(Dispatchers.IO)
 
     override suspend fun refreshMedia() {
-        _audios.value = fetchAudios()
-        _videos.value = fetchVideos()
+        fetchAudios()
+        fetchVideos()
     }
 
-    private fun fetchAudios(): List<AudioModel> {
+    private fun fetchAudios(): Resource<List<AudioModel>> {
         val list = mutableListOf<AudioModel>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -119,11 +119,12 @@ class MediaRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("MediaRepository", "Error fetching audios", e)
+            return Resource.Error("Failed to fetch audios", e)
         }
-        return list
+        return Resource.Success(list)
     }
 
-    private fun fetchVideos(): List<VideoModel> {
+    private fun fetchVideos(): Resource<List<VideoModel>> {
         val list = mutableListOf<VideoModel>()
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
@@ -162,7 +163,8 @@ class MediaRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("MediaRepository", "Error fetching videos", e)
+            return Resource.Error("Failed to fetch videos", e)
         }
-        return list
+        return Resource.Success(list)
     }
 }

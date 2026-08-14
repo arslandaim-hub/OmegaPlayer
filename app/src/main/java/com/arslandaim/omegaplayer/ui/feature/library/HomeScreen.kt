@@ -8,11 +8,12 @@ package com.arslandaim.omegaplayer.ui.feature.library
 
 import android.Manifest
 import android.app.Activity
-import android.net.Uri
+import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
-import android.widget.Toast
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -27,7 +28,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -40,9 +47,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -67,7 +77,7 @@ import com.arslandaim.omegaplayer.data.RecentPlayback
 import com.arslandaim.omegaplayer.viewmodel.AudioViewModel
 import com.arslandaim.omegaplayer.viewmodel.VideoViewModel
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.Stroke as CanvasStroke
 import com.arslandaim.omegaplayer.viewmodel.StorageStats
 import com.arslandaim.omegaplayer.viewmodel.StorageViewModel
 import com.arslandaim.omegaplayer.ui.feature.locker.MoveToLockerResult
@@ -90,58 +100,71 @@ fun RecentPlaybackItem(
 ) {
     Card(
         modifier = Modifier
-            .width(160.dp)
+            .width(180.dp)
+            .height(110.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Placeholder/Icon Background
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(90.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (item.mediaType == "video") Icons.Default.PlayCircle else Icons.Default.MusicNote,
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(40.dp).alpha(0.1f),
                     tint = MaterialTheme.colorScheme.primary
                 )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (item.mediaType == "video") "Video" else item.artist ?: "Audio",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 
+                // Progress Bar
                 val progress = item.position.toFloat() / item.duration.coerceAtLeast(1L)
-                Box(
+                LinearProgressIndicator(
+                    progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(Color.Gray.copy(alpha = 0.3f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(progress)
-                            .fillMaxHeight()
-                            .background(Color(0xFFFF6600))
-                    )
-                }
+                        .clip(CircleShape),
+                    color = Color(0xFFFF6600),
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = if (item.mediaType == "video") "Video" else item.artist ?: "Audio",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
@@ -215,120 +238,79 @@ fun StorageVisualization(stats: StorageStats, modifier: Modifier = Modifier) {
     val videoColor = Color(0xFFFF6600) // Orange
     val audioColor = Color(0xFF87CEEB) // Blue
     val otherColor = Color(0xFF71717A) // Zinc
-    val freeColor = Color(0xFFE4E4E7) // Light Zinc
+    val freeColor = Color(0xFFE4E4E7).copy(alpha = 0.3f)
 
     val total = stats.totalBytes.toFloat()
     if (total <= 0f) return
 
-    val videoSweep = (stats.videoBytes / total) * 360f
-    val audioSweep = (stats.audioBytes / total) * 360f
-    val otherSweep = (stats.otherBytes / total) * 360f
-    val freeSweep = (stats.freeBytes / total) * 360f
+    val videoWeight = (stats.videoBytes / total)
+    val audioWeight = (stats.audioBytes / total)
+    val otherWeight = (stats.otherBytes / total)
+    val freeWeight = (stats.freeBytes / total)
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(100.dp),
-                contentAlignment = Alignment.Center
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Canvas(modifier = Modifier.size(80.dp)) {
-                    var startAngle = -90f
-                    
-                    // Free space (background)
-                    drawArc(
-                        color = freeColor,
-                        startAngle = 0f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        style = Stroke(width = 20f)
-                    )
-
-                    // Other
-                    drawArc(
-                        color = otherColor,
-                        startAngle = startAngle,
-                        sweepAngle = otherSweep,
-                        useCenter = false,
-                        style = Stroke(width = 20f)
-                    )
-                    startAngle += otherSweep
-
-                    // Audio
-                    drawArc(
-                        color = audioColor,
-                        startAngle = startAngle,
-                        sweepAngle = audioSweep,
-                        useCenter = false,
-                        style = Stroke(width = 20f)
-                    )
-                    startAngle += audioSweep
-
-                    // Video
-                    drawArc(
-                        color = videoColor,
-                        startAngle = startAngle,
-                        sweepAngle = videoSweep,
-                        useCenter = false,
-                        style = Stroke(width = 20f)
-                    )
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = stats.formatSize(stats.totalBytes - stats.freeBytes),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Used",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "Storage",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${stats.formatSize(stats.totalBytes - stats.freeBytes)} / ${stats.formatSize(stats.totalBytes)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-
-            Spacer(modifier = Modifier.width(24.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                StorageLegendItem("Videos", stats.formatSize(stats.videoBytes), videoColor)
-                StorageLegendItem("Audios", stats.formatSize(stats.audioBytes), audioColor)
-                StorageLegendItem("Other", stats.formatSize(stats.otherBytes), otherColor)
-                StorageLegendItem("Free", stats.formatSize(stats.freeBytes), freeColor)
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Linear Storage Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(CircleShape)
+                    .background(freeColor)
+            ) {
+                if (videoWeight > 0) Box(modifier = Modifier.fillMaxHeight().weight(videoWeight).background(videoColor))
+                if (audioWeight > 0) Box(modifier = Modifier.fillMaxHeight().weight(audioWeight).background(audioColor))
+                if (otherWeight > 0) Box(modifier = Modifier.fillMaxHeight().weight(otherWeight).background(otherColor))
+                if (freeWeight > 0) Box(modifier = Modifier.fillMaxHeight().weight(freeWeight).background(Color.Transparent))
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StorageLegendItemSmall("Videos", videoColor)
+                StorageLegendItemSmall("Audios", audioColor)
+                StorageLegendItemSmall("Other", otherColor)
+                StorageLegendItemSmall("Free", Color(0xFFE4E4E7))
             }
         }
     }
 }
 
 @Composable
-fun StorageLegendItem(label: String, size: String, color: Color) {
+fun StorageLegendItemSmall(label: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(color, CircleShape)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(60.dp)
-        )
-        Text(
-            text = size,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -353,6 +335,22 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     
     var selectedTab by rememberSaveable { mutableStateOf(initialTab ?: MediaTab.VIDEOS) }
+    var isGridView by rememberSaveable { mutableStateOf(false) }
+
+    val pagerState = rememberPagerState(
+        initialPage = selectedTab.ordinal,
+        pageCount = { MediaTab.entries.size }
+    )
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTab = MediaTab.entries[pagerState.currentPage]
+    }
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab.ordinal != pagerState.currentPage) {
+            pagerState.animateScrollToPage(selectedTab.ordinal)
+        }
+    }
 
     // Data loading logic
     LaunchedEffect(Unit) {
@@ -1143,68 +1141,24 @@ fun HomeScreen(
                 )
 
                 if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
-                    TabRow(
-                        selectedTabIndex = selectedTab.ordinal,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        divider = {},
-                        indicator = { tabPositions ->
-                            if (selectedTab.ordinal < tabPositions.size) {
-                                TabRowDefaults.SecondaryIndicator(
-                                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                                    color = Color(0xFFFF6600),
-                                    height = 3.dp
-                                )
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    ) {
-                        Tab(
-                            selected = selectedTab == MediaTab.VIDEOS,
-                            onClick = { selectedTab = MediaTab.VIDEOS },
-                            text = { 
-                                Text(
-                                    "Videos",
-                                    fontWeight = if (selectedTab == MediaTab.VIDEOS) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 16.sp
-                                ) 
-                            }
-                        )
-                        Tab(
-                            selected = selectedTab == MediaTab.AUDIOS,
-                            onClick = { selectedTab = MediaTab.AUDIOS },
-                            text = { 
-                                Text(
-                                    "Audios",
-                                    fontWeight = if (selectedTab == MediaTab.AUDIOS) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 16.sp
-                                ) 
-                            }
-                        )
-                        Tab(
-                            selected = selectedTab == MediaTab.PLAYLISTS,
-                            onClick = { selectedTab = MediaTab.PLAYLISTS },
-                            text = { 
-                                Text(
-                                    "Playlists",
-                                    fontWeight = if (selectedTab == MediaTab.PLAYLISTS) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 16.sp
-                                ) 
-                            }
-                        )
-                    }
-                    if (selectedTab == MediaTab.VIDEOS) {
-                        StorageVisualization(stats = storageStats)
-                    }
+                    HomeDashboard(
+                        selectedTab = selectedTab,
+                        storageStats = storageStats,
+                        onTabSelected = { tab -> selectedTab = tab }
+                    )
                 }
                 
-                // Search Bar
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                // Search & Filter Bar
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        modifier = Modifier.weight(1f),
                         placeholder = { 
                             val placeholderText = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) "Search folders..." 
                                                else if (selectedPlaylistForDetails != null) "Search in ${selectedPlaylistForDetails!!.name}..."
@@ -1239,18 +1193,43 @@ fun HomeScreen(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyLarge
                     )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = { isGridView = !isGridView },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f), CircleShape)
+                    ) {
+                        Icon(
+                            if (isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                            contentDescription = "Toggle View",
+                            tint = Color(0xFFFF6600)
+                        )
+                    }
                 }
 
-                Text(
-                    text = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) "Folders" 
-                           else if (selectedPlaylistForDetails != null) "Items"
-                           else if (selectedTab == MediaTab.VIDEOS) "Videos" else "Audios",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 4.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (currentSelectedFolder == null && selectedPlaylistForDetails == null) "Folders" 
+                               else if (selectedPlaylistForDetails != null) "Items"
+                               else if (selectedTab == MediaTab.VIDEOS) "Videos" else "Audios",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                    
+                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
+                        Text(
+                            text = "${currentFolders.size} Folders",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         },
         floatingActionButton = {
@@ -1274,109 +1253,139 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            if (isLoading && (if (selectedTab == MediaTab.VIDEOS) videos.isEmpty() else audios.isEmpty())) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (currentSelectedFolder == null && selectedPlaylistForDetails == null && filteredFolders.isEmpty() && selectedTab != MediaTab.PLAYLISTS) {
-                EmptyState(searchQuery.isNotEmpty(), true)
-            } else if ((currentSelectedFolder != null || selectedPlaylistForDetails != null) && (if (selectedTab == MediaTab.VIDEOS) filteredVideos.isEmpty() else if (selectedTab == MediaTab.AUDIOS) filteredAudios.isEmpty() else playlistItems.isEmpty())) {
-                EmptyState(searchQuery.isNotEmpty(), false)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Recently Played Section
-                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null && recentPlayback.isNotEmpty() && selectedTab != MediaTab.PLAYLISTS) {
-                        item {
-                            Column {
-                                Text(
-                                    text = "Recently Played",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    contentPadding = PaddingValues(bottom = 8.dp)
-                                ) {
-                                    items(recentPlayback, key = { it.uri }) { item ->
-                                        RecentPlaybackItem(
-                                            item = item,
-                                            onClick = {
-                                                val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
-                                                if (item.mediaType == "video") onVideoClick(encodedUri)
-                                                else onAudioClick(encodedUri)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().padding(padding),
+            userScrollEnabled = currentSelectedFolder == null && selectedPlaylistForDetails == null
+        ) { page ->
+            val pageTab = MediaTab.entries[page]
+            
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (isLoading && (if (pageTab == MediaTab.VIDEOS) videos.isEmpty() else audios.isEmpty())) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (currentSelectedFolder == null && selectedPlaylistForDetails == null && filteredFolders.isEmpty() && pageTab != MediaTab.PLAYLISTS) {
+                    EmptyState(searchQuery.isNotEmpty(), true)
+                } else if ((currentSelectedFolder != null || selectedPlaylistForDetails != null) && (if (pageTab == MediaTab.VIDEOS) filteredVideos.isEmpty() else if (pageTab == MediaTab.AUDIOS) filteredAudios.isEmpty() else playlistItems.isEmpty())) {
+                    EmptyState(searchQuery.isNotEmpty(), false)
+                } else {
+                    if (isGridView) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
+                                if (pageTab != MediaTab.PLAYLISTS) {
+                                    if (recentPlayback.isNotEmpty()) {
+                                        item(span = { GridItemSpan(2) }) {
+                                            RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick)
+                                        }
+                                    }
+                                }
+
+                                if (pageTab == MediaTab.PLAYLISTS) {
+                                    if (playlists.isNotEmpty()) {
+                                        items(playlists, key = { it.id }, span = { GridItemSpan(2) }) { playlist ->
+                                            PlaylistListItem(playlist, { selectedPlaylistForDetails = playlist }, { audioViewModel.deletePlaylist(playlist) })
+                                        }
+                                    }
+                                } else {
+                                    items(filteredFolders.keys.toList(), key = { it }) { folderName ->
+                                        FolderGridItem(
+                                            name = folderName,
+                                            count = filteredFolders[folderName] ?: 0,
+                                            onClick = { 
+                                                if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName)
+                                                else audioViewModel.setSelectedFolder(folderName)
                                             }
                                         )
                                     }
                                 }
-                            }
-                        }
-                    }
-
-                    if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
-                        if (selectedTab == MediaTab.PLAYLISTS) {
-                            if (playlists.isEmpty()) {
-                                item {
-                                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("No playlists yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
+                            } else if (selectedPlaylistForDetails != null) {
+                                items(playlistItems, key = { it.id }) { item ->
+                                    PlaylistGridItem(item, videos, audios, viewModel, audioViewModel, sharedTransitionScope, animatedVisibilityScope, onVideoClick, onAudioClick, selectedPlaylistForDetails!!)
+                                }
+                            } else if (pageTab == MediaTab.VIDEOS) {
+                                items(filteredVideos, key = { it.id }) { video ->
+                                    VideoGridItem(video, viewModel, sharedTransitionScope, animatedVisibilityScope, onVideoClick, { checkPinAndProceed { selectedVideoForLocker = video } }, { selectedVideoForDelete = video }, { mediaPendingPlaylist = video.uri.toString() to "video"; showAddToPlaylistDialog = true })
                                 }
                             } else {
-                                items(playlists, key = { it.id }) { playlist ->
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { selectedPlaylistForDetails = playlist },
-                                        shape = RoundedCornerShape(20.dp),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = Color(0xFFFF6600))
-                                            Spacer(modifier = Modifier.width(16.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(playlist.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                            }
-                                            IconButton(onClick = { audioViewModel.deletePlaylist(playlist) }) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            items(filteredFolders.keys.toList(), key = { it }) { folderName ->
-                                Box(modifier = Modifier.animateItem()) {
-                                    FolderListItem(
-                                        name = folderName,
-                                        count = filteredFolders[folderName] ?: 0,
-                                        onClick = { 
-                                            if (selectedTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName)
-                                            else audioViewModel.setSelectedFolder(folderName)
-                                        },
-                                        onDelete = { folderToDelete = folderName },
-                                        onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }
-                                    )
+                                items(filteredAudios, key = { it.id }) { audio ->
+                                    AudioGridItem(audio, audioViewModel, onAudioClick, { checkPinAndProceed { selectedAudioForLocker = audio } }, { selectedAudioForDelete = audio }, { mediaPendingPlaylist = audio.uri.toString() to "audio"; showAddToPlaylistDialog = true })
                                 }
                             }
                         }
-                    } else if (selectedPlaylistForDetails != null) {
-                        items(playlistItems, key = { it.id }) { item ->
-                            if (item.mediaType == "video") {
-                                val video = videos.find { it.uri.toString() == item.mediaUri }
-                                if (video != null) {
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Dashboard items only on first load of the list
+                            if (currentSelectedFolder == null && selectedPlaylistForDetails == null && pageTab != MediaTab.PLAYLISTS) {
+                                if (recentPlayback.isNotEmpty()) {
+                                    item {
+                                        RecentPlaybackSection(recentPlayback, onVideoClick, onAudioClick)
+                                    }
+                                }
+                            }
+
+                            if (currentSelectedFolder == null && selectedPlaylistForDetails == null) {
+                                if (pageTab == MediaTab.PLAYLISTS) {
+                                    if (playlists.isEmpty()) {
+                                        item {
+                                            Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text("No playlists yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                    } else {
+                                        items(playlists, key = { it.id }) { playlist ->
+                                        PlaylistListItem(
+                                            playlist = playlist,
+                                            onClick = { selectedPlaylistForDetails = playlist },
+                                            onDelete = { audioViewModel.deletePlaylist(playlist) }
+                                        )
+                                    }
+                                    }
+                                } else {
+                                    items(filteredFolders.keys.toList(), key = { it }) { folderName ->
+                                        FolderListItem(
+                                            name = folderName,
+                                            count = filteredFolders[folderName] ?: 0,
+                                            onClick = { 
+                                                if (pageTab == MediaTab.VIDEOS) viewModel.setSelectedFolder(folderName)
+                                                else audioViewModel.setSelectedFolder(folderName)
+                                            },
+                                            onDelete = { folderToDelete = folderName },
+                                            onMoveToLocker = { checkPinAndProceed { folderToMoveToLocker = folderName } }
+                                        )
+                                    }
+                                }
+                            } else if (selectedPlaylistForDetails != null) {
+                                items(playlistItems, key = { it.id }) { item ->
+                                    MediaListItemInPlaylist(
+                                        item = item,
+                                        videos = videos,
+                                        audios = audios,
+                                        videoViewModel = viewModel,
+                                        audioViewModel = audioViewModel,
+                                        sharedTransitionScope = sharedTransitionScope,
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        onVideoClick = onVideoClick,
+                                        onAudioClick = onAudioClick,
+                                        playlist = selectedPlaylistForDetails!!,
+                                        onVideoLock = { checkPinAndProceed { selectedVideoForLocker = it } },
+                                        onAudioLock = { checkPinAndProceed { selectedAudioForLocker = it } },
+                                        onVideoDelete = { selectedVideoForDelete = it },
+                                        onAudioDelete = { selectedAudioForDelete = it }
+                                    )
+                                }
+                            } else if (pageTab == MediaTab.VIDEOS) {
+                                items(filteredVideos, key = { it.id }) { video ->
                                     VideoListItem(
                                         video = video,
                                         isPlaying = viewModel.activeVideoUri.collectAsState().value == video.uri.toString() && viewModel.isPlaying.collectAsState().value,
@@ -1388,16 +1397,17 @@ fun HomeScreen(
                                         },
                                         onLockClick = { checkPinAndProceed { selectedVideoForLocker = video } },
                                         onDeleteClick = { selectedVideoForDelete = video },
-                                        onPlaylistClick = { audioViewModel.removeFromPlaylist(selectedPlaylistForDetails!!.id, video.uri.toString()) },
-                                        isInPlaylistView = true
+                                        onPlaylistClick = {
+                                            mediaPendingPlaylist = video.uri.toString() to "video"
+                                            showAddToPlaylistDialog = true
+                                        }
                                     )
                                 }
                             } else {
-                                val audio = audios.find { it.uri.toString() == item.mediaUri }
-                                if (audio != null) {
+                                items(filteredAudios, key = { it.id }) { audio ->
                                     AudioListItem(
                                         audio = audio,
-                                        isPlaying = audioViewModel.activeAudioUri.collectAsState().value == audio.uri.toString() && audioViewModel.isPlaying.collectAsState().value,
+                                        isPlaying = audioViewModel.activeAudioUri.collectAsState().value == audio.uri.toString() && audioViewModel.isPlaying.collectAsStateWithLifecycle().value,
                                         onClick = {
                                             val encodedUri = URLEncoder.encode(audio.uri.toString(), StandardCharsets.UTF_8.toString())
                                             onAudioClick(encodedUri)
@@ -1405,53 +1415,12 @@ fun HomeScreen(
                                         onPlayPauseClick = { audioViewModel.togglePlayPause(audio) },
                                         onLockClick = { checkPinAndProceed { selectedAudioForLocker = audio } },
                                         onDeleteClick = { selectedAudioForDelete = audio },
-                                        onPlaylistClick = { audioViewModel.removeFromPlaylist(selectedPlaylistForDetails!!.id, audio.uri.toString()) },
-                                        isInPlaylistView = true
+                                        onPlaylistClick = {
+                                            mediaPendingPlaylist = audio.uri.toString() to "audio"
+                                            showAddToPlaylistDialog = true
+                                        }
                                     )
                                 }
-                            }
-                        }
-                    } else if (selectedTab == MediaTab.VIDEOS) {
-                        items(filteredVideos, key = { it.id }) { video ->
-                            val isActive = viewModel.activeVideoUri.collectAsState().value == video.uri.toString()
-                            Box(modifier = Modifier.animateItem()) {
-                                VideoListItem(
-                                    video = video,
-                                    isPlaying = isActive && viewModel.isPlaying.collectAsState().value,
-                                    sharedTransitionScope = sharedTransitionScope,
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    onClick = {
-                                        val encodedUri = URLEncoder.encode(video.uri.toString(), StandardCharsets.UTF_8.toString())
-                                        onVideoClick(encodedUri)
-                                    },
-                                    onLockClick = { checkPinAndProceed { selectedVideoForLocker = video } },
-                                    onDeleteClick = { selectedVideoForDelete = video },
-                                    onPlaylistClick = {
-                                        mediaPendingPlaylist = video.uri.toString() to "video"
-                                        showAddToPlaylistDialog = true
-                                    }
-                                )
-                            }
-                        }
-                    } else {
-                        items(filteredAudios, key = { it.id }) { audio ->
-                            val isActive = audioViewModel.activeAudioUri.collectAsState().value == audio.uri.toString()
-                            Box(modifier = Modifier.animateItem()) {
-                                AudioListItem(
-                                    audio = audio,
-                                    isPlaying = isActive && audioViewModel.isPlaying.collectAsStateWithLifecycle().value,
-                                    onClick = {
-                                        val encodedUri = URLEncoder.encode(audio.uri.toString(), StandardCharsets.UTF_8.toString())
-                                        onAudioClick(encodedUri)
-                                    },
-                                    onPlayPauseClick = { audioViewModel.togglePlayPause(audio) },
-                                    onLockClick = { checkPinAndProceed { selectedAudioForLocker = audio } },
-                                    onDeleteClick = { selectedAudioForDelete = audio },
-                                    onPlaylistClick = {
-                                        mediaPendingPlaylist = audio.uri.toString() to "audio"
-                                        showAddToPlaylistDialog = true
-                                    }
-                                )
                             }
                         }
                     }
@@ -1475,7 +1444,7 @@ fun FolderListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -1486,9 +1455,9 @@ fun FolderListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                modifier = Modifier.size(56.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFFFF9800).copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -1504,7 +1473,7 @@ fun FolderListItem(
                 Text(
                     text = name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
@@ -1519,7 +1488,7 @@ fun FolderListItem(
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "Folder options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
                 DropdownMenu(
@@ -1544,6 +1513,400 @@ fun FolderListItem(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun FolderGridItem(
+    name: String,
+    count: Int,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Surface(
+                modifier = Modifier.size(64.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFFFF9800).copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = null,
+                        tint = Color(0xFFFF9800),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "$count items",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun HomeDashboard(
+    selectedTab: MediaTab,
+    storageStats: StorageStats,
+    onTabSelected: (MediaTab) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Modern Pill Tab Row
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MediaTab.entries.forEach { tab ->
+                    val isSelected = selectedTab == tab
+                    val background by animateColorAsState(
+                        if (isSelected) Color(0xFFFF6600) else Color.Transparent,
+                        label = "tabBg"
+                    )
+                    val contentColor by animateColorAsState(
+                        if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = "tabContent"
+                    )
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { onTabSelected(tab) },
+                        shape = RoundedCornerShape(24.dp),
+                        color = background
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = tab.name.lowercase().replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = contentColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (selectedTab == MediaTab.VIDEOS) {
+            Spacer(modifier = Modifier.height(12.dp))
+            StorageVisualization(stats = storageStats)
+        }
+    }
+}
+
+@Composable
+fun RecentPlaybackSection(
+    recentPlayback: List<RecentPlayback>,
+    onVideoClick: (String) -> Unit,
+    onAudioClick: (String) -> Unit
+) {
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(
+            text = "Continue Watching",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(recentPlayback, key = { it.uri }) { item ->
+                RecentPlaybackItem(
+                    item = item,
+                    onClick = {
+                        val encodedUri = URLEncoder.encode(item.uri, StandardCharsets.UTF_8.toString())
+                        if (item.mediaType == "video") onVideoClick(encodedUri)
+                        else onAudioClick(encodedUri)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PlaylistListItem(
+    playlist: Playlist,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFFF6600).copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = Color(0xFFFF6600))
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(playlist.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun MediaListItemInPlaylist(
+    item: PlaylistItem,
+    videos: List<VideoModel>,
+    audios: List<AudioModel>,
+    videoViewModel: VideoViewModel,
+    audioViewModel: AudioViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    onVideoClick: (String) -> Unit,
+    onAudioClick: (String) -> Unit,
+    playlist: Playlist,
+    onVideoLock: (VideoModel) -> Unit,
+    onAudioLock: (AudioModel) -> Unit,
+    onVideoDelete: (VideoModel) -> Unit,
+    onAudioDelete: (AudioModel) -> Unit
+) {
+    if (item.mediaType == "video") {
+        val video = videos.find { it.uri.toString() == item.mediaUri }
+        if (video != null) {
+            VideoListItem(
+                video = video,
+                isPlaying = videoViewModel.activeVideoUri.collectAsState().value == video.uri.toString() && videoViewModel.isPlaying.collectAsState().value,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+                onClick = {
+                    val encodedUri = URLEncoder.encode(video.uri.toString(), StandardCharsets.UTF_8.toString())
+                    onVideoClick(encodedUri)
+                },
+                onLockClick = { onVideoLock(video) },
+                onDeleteClick = { onVideoDelete(video) },
+                onPlaylistClick = { audioViewModel.removeFromPlaylist(playlist.id, video.uri.toString()) },
+                isInPlaylistView = true
+            )
+        }
+    } else {
+        val audio = audios.find { it.uri.toString() == item.mediaUri }
+        if (audio != null) {
+            AudioListItem(
+                audio = audio,
+                isPlaying = audioViewModel.activeAudioUri.collectAsState().value == audio.uri.toString() && audioViewModel.isPlaying.collectAsState().value,
+                onClick = {
+                    val encodedUri = URLEncoder.encode(audio.uri.toString(), StandardCharsets.UTF_8.toString())
+                    onAudioClick(encodedUri)
+                },
+                onPlayPauseClick = { audioViewModel.togglePlayPause(audio) },
+                onLockClick = { onAudioLock(audio) },
+                onDeleteClick = { onAudioDelete(audio) },
+                onPlaylistClick = { audioViewModel.removeFromPlaylist(playlist.id, audio.uri.toString()) },
+                isInPlaylistView = true
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun VideoGridItem(
+    video: VideoModel,
+    viewModel: VideoViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    onClick: (String) -> Unit,
+    onLock: () -> Unit,
+    onDelete: () -> Unit,
+    onPlaylist: () -> Unit
+) {
+    val isPlaying = viewModel.activeVideoUri.collectAsState().value == video.uri.toString() && viewModel.isPlaying.collectAsState().value
+    
+    with(sharedTransitionScope) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clickable { 
+                    val encodedUri = URLEncoder.encode(video.uri.toString(), StandardCharsets.UTF_8.toString())
+                    onClick(encodedUri) 
+                },
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(video.uri)
+                        .videoFrameMillis(1000)
+                        .size(400)
+                        .precision(Precision.INEXACT)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                
+                if (isPlaying) {
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
+                        PlayingVisualizer()
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = video.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AudioGridItem(
+    audio: AudioModel,
+    viewModel: AudioViewModel,
+    onClick: (String) -> Unit,
+    onLock: () -> Unit,
+    onDelete: () -> Unit,
+    onPlaylist: () -> Unit
+) {
+    val isPlaying = viewModel.activeAudioUri.collectAsState().value == audio.uri.toString() && viewModel.isPlaying.collectAsState().value
+    
+    val albumArtUri = remember(audio) {
+        ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), audio.albumId)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clickable { 
+                val encodedUri = URLEncoder.encode(audio.uri.toString(), StandardCharsets.UTF_8.toString())
+                onClick(encodedUri) 
+            },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = albumArtUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                error = rememberVectorPainter(Icons.Default.MusicNote),
+                fallback = rememberVectorPainter(Icons.Default.MusicNote)
+            )
+            
+            if (isPlaying) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
+                    PlayingVisualizer()
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = audio.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun PlaylistGridItem(
+    item: PlaylistItem,
+    videos: List<VideoModel>,
+    audios: List<AudioModel>,
+    videoViewModel: VideoViewModel,
+    audioViewModel: AudioViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    onVideoClick: (String) -> Unit,
+    onAudioClick: (String) -> Unit,
+    playlist: Playlist
+) {
+    if (item.mediaType == "video") {
+        val video = videos.find { it.uri.toString() == item.mediaUri }
+        if (video != null) {
+            VideoGridItem(video, videoViewModel, sharedTransitionScope, animatedVisibilityScope, onVideoClick, {}, {}, {})
+        }
+    } else {
+        val audio = audios.find { it.uri.toString() == item.mediaUri }
+        if (audio != null) {
+            AudioGridItem(audio, audioViewModel, onAudioClick, {}, {}, {})
         }
     }
 }
@@ -1625,18 +1988,35 @@ fun AddToPlaylistFromHomeDialog(
 
 @Composable
 fun EmptyState(isSearching: Boolean, isFolderView: Boolean) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                if (isSearching) Icons.Default.Search else if (isFolderView) Icons.Default.FolderOpen else Icons.Default.PlayArrow,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier.size(100.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (isSearching) Icons.Default.SearchOff else if (isFolderView) Icons.Default.FolderOff else Icons.Default.PlayCircleOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
-                if (isSearching) "No matches found" else if (isFolderView) "No folders found" else "No videos in this folder",
-                style = MaterialTheme.typography.titleMedium,
+                text = if (isSearching) "No results found" else if (isFolderView) "No folders found" else "No media items",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = if (isSearching) "Try a different search term" else "Your media library is empty",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1671,22 +2051,25 @@ fun VideoListItem(
                     exit = fadeOut(),
                     resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
                 ),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isPlaying) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+                                else MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isPlaying) 6.dp else 2.dp)
         ) {
             Row(
                 modifier = Modifier
-                    .padding(8.dp)
+                    .padding(10.dp)
                     .fillMaxWidth()
-                    .height(84.dp),
+                    .height(90.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .width(130.dp)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(18.dp))
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
@@ -1711,7 +2094,7 @@ fun VideoListItem(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.3f)),
+                                .background(Color.Black.copy(alpha = 0.4f)),
                             contentAlignment = Alignment.Center
                         ) {
                             PlayingVisualizer()
@@ -1719,30 +2102,32 @@ fun VideoListItem(
                     }
                     
                     Surface(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Black.copy(alpha = 0.7f),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(6.dp)
+                            .padding(8.dp)
                     ) {
                         Text(
                             text = formatDuration(video.duration),
                             color = Color.White,
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
                 
-                Column(modifier = Modifier.padding(horizontal = 12.dp).weight(1f)) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp).weight(1f)) {
                     Text(
                         text = video.name,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isPlaying) Color(0xFFFF6600) else MaterialTheme.colorScheme.onSurface
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${video.size / (1024 * 1024)} MB",
                         style = MaterialTheme.typography.bodySmall,
@@ -1750,51 +2135,52 @@ fun VideoListItem(
                     )
                 }
 
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                IconButton(onClick = onLockClick) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = "Move to Locker",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                var showMenu by remember { mutableStateOf(false) }
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onLockClick) {
                         Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.size(20.dp)
+                            Icons.Default.Lock,
+                            contentDescription = "Move to Locker",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(if (isInPlaylistView) "Remove from Playlist" else "Add to Playlist") },
-                            onClick = { 
-                                showMenu = false
-                                onPlaylistClick() 
-                            },
-                            leadingIcon = { 
-                                Icon(
-                                    if (isInPlaylistView) Icons.Default.PlaylistRemove else Icons.AutoMirrored.Filled.PlaylistAdd, 
-                                    contentDescription = null
-                                ) 
-                            }
-                        )
+
+                    var showMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(if (isInPlaylistView) "Remove from Playlist" else "Add to Playlist") },
+                                onClick = { 
+                                    showMenu = false
+                                    onPlaylistClick() 
+                                },
+                                leadingIcon = { 
+                                    Icon(
+                                        if (isInPlaylistView) Icons.Default.PlaylistRemove else Icons.AutoMirrored.Filled.PlaylistAdd, 
+                                        contentDescription = null
+                                    ) 
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                onClick = { 
+                                    showMenu = false
+                                    onDeleteClick() 
+                                },
+                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                            )
+                        }
                     }
                 }
             }
@@ -1813,7 +2199,7 @@ fun formatDuration(durationMs: Long): String {
 @Composable
 fun AudioListItem(
     audio: AudioModel,
-    isPlaying: Boolean,
+    isPlaying: Boolean = false,
     onClick: () -> Unit,
     onPlayPauseClick: () -> Unit,
     onLockClick: () -> Unit,
@@ -1821,82 +2207,91 @@ fun AudioListItem(
     onPlaylistClick: () -> Unit,
     isInPlaylistView: Boolean = false
 ) {
+    val albumArtUri = remember(audio) {
+        ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), audio.albumId)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPlaying) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+                            else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isPlaying) 6.dp else 2.dp)
     ) {
         Row(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(10.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (isPlaying) {
-                        PlayingVisualizer(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(
-                            Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = Color(0xFFF97316),
-                            modifier = Modifier.size(32.dp)
-                        )
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(albumArtUri)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    error = rememberVectorPainter(Icons.Default.MusicNote),
+                    fallback = rememberVectorPainter(Icons.Default.MusicNote)
+                )
+                
+                if (isPlaying) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        PlayingVisualizer()
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp).weight(1f)) {
                 Text(
                     text = audio.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = if (isPlaying) Color(0xFFFF6600) else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${audio.artist} • ${formatDuration(audio.duration)}",
+                    text = audio.artist,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             
             IconButton(onClick = onPlayPauseClick) {
                 Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color(0xFFFF6600)
+                    imageVector = if (isPlaying) Icons.Default.PauseCircleFilled else Icons.Default.PlayCircleFilled,
+                    contentDescription = "Play/Pause",
+                    tint = Color(0xFFFF6600),
+                    modifier = Modifier.size(32.dp)
                 )
             }
-
-            IconButton(onClick = onLockClick) {
-                Icon(
-                    Icons.Default.Lock,
-                    contentDescription = "Lock",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
+            
             var showMenu by remember { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
-                        Icons.Default.MoreVert,
+                        imageVector = Icons.Default.MoreVert,
                         contentDescription = "More",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
                 DropdownMenu(
@@ -1905,19 +2300,22 @@ fun AudioListItem(
                 ) {
                     DropdownMenuItem(
                         text = { Text(if (isInPlaylistView) "Remove from Playlist" else "Add to Playlist") },
-                        onClick = { 
+                        onClick = {
                             showMenu = false
-                            onPlaylistClick() 
+                            onPlaylistClick()
                         },
-                        leadingIcon = { 
-                            Icon(
-                                if (isInPlaylistView) Icons.Default.PlaylistRemove else Icons.AutoMirrored.Filled.PlaylistAdd, 
-                                contentDescription = null
-                            ) 
-                        }
+                        leadingIcon = { Icon(if (isInPlaylistView) Icons.Default.PlaylistRemove else Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete Audio", color = MaterialTheme.colorScheme.error) },
+                        text = { Text("Move to Locker") },
+                        onClick = {
+                            showMenu = false
+                            onLockClick()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                         onClick = {
                             showMenu = false
                             onDeleteClick()
