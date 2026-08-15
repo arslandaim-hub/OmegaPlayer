@@ -35,6 +35,7 @@ import com.arslandaim.omegaplayer.service.PlaybackService
 import com.arslandaim.omegaplayer.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -70,7 +71,11 @@ class VideoViewModel @Inject constructor(
     private val _videoError = MutableStateFlow<String?>(null)
     val videoError: StateFlow<String?> = _videoError.asStateFlow()
 
-    val videos: StateFlow<List<VideoModel>> = getVideosUseCase()
+    private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val videos: StateFlow<List<VideoModel>> = refreshTrigger
+        .flatMapLatest { getVideosUseCase() }
         .onEach { resource ->
             when (resource) {
                 is Resource.Loading -> _isLoading.value = true
@@ -216,11 +221,15 @@ class VideoViewModel @Inject constructor(
     }
 
     fun fetchVideos(context: Context) {
-        // Automatically handled by Flow
+        viewModelScope.launch {
+            refreshTrigger.emit(Unit)
+        }
     }
 
     fun refreshVideos(context: Context) {
-        // Trigger manual refresh if needed
+        viewModelScope.launch {
+            refreshTrigger.emit(Unit)
+        }
     }
 
     @OptIn(coil.annotation.ExperimentalCoilApi::class)

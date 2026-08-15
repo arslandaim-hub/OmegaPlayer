@@ -29,6 +29,7 @@ import com.arslandaim.omegaplayer.util.Resource
 import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -62,7 +63,11 @@ class AudioViewModel @Inject constructor(
     private val _audioError = MutableStateFlow<String?>(null)
     val audioError: StateFlow<String?> = _audioError.asStateFlow()
 
-    val audios: StateFlow<List<AudioModel>> = getAudiosUseCase()
+    private val refreshTrigger = MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val audios: StateFlow<List<AudioModel>> = refreshTrigger
+        .flatMapLatest { getAudiosUseCase() }
         .onEach { resource ->
             when (resource) {
                 is Resource.Loading -> _isLoading.value = true
@@ -248,11 +253,15 @@ class AudioViewModel @Inject constructor(
     }
 
     fun fetchAudios(context: Context) {
-        // Automatically handled by Flow in the new architecture
+        viewModelScope.launch {
+            refreshTrigger.emit(Unit)
+        }
     }
 
     fun refreshAudios(context: Context) {
-        // You could trigger a manual refresh here if needed
+        viewModelScope.launch {
+            refreshTrigger.emit(Unit)
+        }
     }
 
     fun savePlaybackProgress() {
