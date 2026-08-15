@@ -91,7 +91,7 @@ fun NowPlayingBar(
             .height(72.dp)
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .shadow(
-                elevation = 4.dp,
+                elevation = 6.dp,
                 shape = RoundedCornerShape(16.dp)
             )
             .clip(RoundedCornerShape(16.dp))
@@ -125,10 +125,10 @@ fun NowPlayingBar(
                     )
                 },
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 2.dp,
+            tonalElevation = 0.dp,
             border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             )
         ) {
             Box(modifier = Modifier.fillMaxSize()) {

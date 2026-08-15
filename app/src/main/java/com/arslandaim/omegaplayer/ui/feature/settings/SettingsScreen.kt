@@ -46,6 +46,7 @@ import com.arslandaim.omegaplayer.data.AppTheme
 import com.arslandaim.omegaplayer.data.LockerDatabase
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
 import com.arslandaim.omegaplayer.viewmodel.ThemeViewModel
+import com.arslandaim.omegaplayer.viewmodel.VideoViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,8 +80,10 @@ fun SettingsScreen(
 
     val dao = remember { LockerDatabase.getDatabase(context).lockerDao() }
     val themeViewModel: ThemeViewModel = hiltViewModel()
+    val videoViewModel: VideoViewModel = hiltViewModel()
     val currentTheme by themeViewModel.theme.collectAsState()
     val dynamicColorEnabled by themeViewModel.dynamicColor.collectAsState()
+    val isHistoryPaused by videoViewModel.isHistoryPaused.collectAsStateWithLifecycle()
 
     var showChangePinDialog by remember { mutableStateOf(false) }
     var showSecurityVerification by remember { mutableStateOf(false) }
@@ -173,6 +176,26 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            Text("History & Privacy", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                ListItem(
+                    headlineContent = { Text("Watch History", fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(if (isHistoryPaused) "History recording is paused" else "Recording playback history") },
+                    trailingContent = {
+                        Switch(
+                            checked = !isHistoryPaused,
+                            onCheckedChange = { videoViewModel.toggleHistoryPause(!it) }
+                        )
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
             }
 
             Text("Security", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)

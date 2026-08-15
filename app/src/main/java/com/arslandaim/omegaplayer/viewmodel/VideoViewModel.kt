@@ -232,8 +232,6 @@ class VideoViewModel @Inject constructor(
     }
 
     fun savePlaybackProgress() {
-        if (isHistoryPaused.value) return
-
         val player = playbackConnection.mediaController.value ?: return
         val mediaItem = player.currentMediaItem ?: return
         val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: return
@@ -244,6 +242,8 @@ class VideoViewModel @Inject constructor(
         val name = video.name
 
         viewModelScope.launch {
+            if (themePreferences.isHistoryPaused.first()) return@launch
+
             playbackRepository.saveRecentPlayback(
                 RecentPlayback(
                     uri = currentUri,

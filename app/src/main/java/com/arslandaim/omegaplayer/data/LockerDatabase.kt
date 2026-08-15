@@ -10,7 +10,7 @@ import android.content.Context
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
-@Entity(tableName = "locked_videos")
+@Entity(tableName = "locked_videos", indices = [Index("originFolderName")])
 data class LockedVideo(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val originalPath: String,
@@ -57,7 +57,7 @@ data class PlaylistItem(
     val addedAt: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "recent_playback")
+@Entity(tableName = "recent_playback", indices = [Index("lastPlayed")])
 data class RecentPlayback(
     @PrimaryKey val uri: String,
     val position: Long,
@@ -127,7 +127,7 @@ interface LockerDao {
     suspend fun clearAllRecentPlayback()
 }
 
-@Database(entities = [LockedVideo::class, LockerSettings::class, Playlist::class, PlaylistItem::class, RecentPlayback::class], version = 6)
+@Database(entities = [LockedVideo::class, LockerSettings::class, Playlist::class, PlaylistItem::class, RecentPlayback::class], version = 7)
 abstract class LockerDatabase : RoomDatabase() {
     abstract fun lockerDao(): LockerDao
 

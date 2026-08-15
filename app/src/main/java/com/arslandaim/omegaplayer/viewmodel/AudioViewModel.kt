@@ -19,6 +19,7 @@ import com.arslandaim.omegaplayer.data.Playlist
 import com.arslandaim.omegaplayer.data.PlaylistItem
 import com.arslandaim.omegaplayer.data.RecentPlayback
 import com.arslandaim.omegaplayer.data.repository.PlaybackRepository
+import com.arslandaim.omegaplayer.data.ThemePreferences
 import com.arslandaim.omegaplayer.domain.usecase.media.GetAudiosUseCase
 import com.arslandaim.omegaplayer.domain.usecase.media.GetVideosUseCase
 import com.arslandaim.omegaplayer.domain.usecase.playback.GetRecentPlaybackUseCase
@@ -41,7 +42,8 @@ class AudioViewModel @Inject constructor(
     private val playlistUseCases: PlaylistUseCases,
     private val getRecentPlaybackUseCase: GetRecentPlaybackUseCase,
     private val playbackConnection: PlaybackConnection,
-    private val playbackRepository: PlaybackRepository
+    private val playbackRepository: PlaybackRepository,
+    private val themePreferences: ThemePreferences
 ) : AndroidViewModel(application) {
 
     private val _isLoading = MutableStateFlow(false)
@@ -82,6 +84,9 @@ class AudioViewModel @Inject constructor(
 
     val recentPlayback: StateFlow<List<RecentPlayback>> = getRecentPlaybackUseCase()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val isHistoryPaused: StateFlow<Boolean> = themePreferences.isHistoryPaused
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _sleepTimerActive = MutableStateFlow(false)
     val sleepTimerActive: StateFlow<Boolean> = _sleepTimerActive.asStateFlow()
@@ -262,6 +267,8 @@ class AudioViewModel @Inject constructor(
         val artist = audio.artist
 
         viewModelScope.launch(Dispatchers.IO) {
+            if (themePreferences.isHistoryPaused.first()) return@launch
+            
             playbackRepository.saveRecentPlayback(
                 RecentPlayback(
                     uri = currentUri,

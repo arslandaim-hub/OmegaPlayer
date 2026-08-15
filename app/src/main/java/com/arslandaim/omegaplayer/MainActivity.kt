@@ -294,16 +294,16 @@ fun MainScreen(
     }
 
     Scaffold(
-        // This tells the scaffold not to consume navigation bar insets globally.
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Column(
-                modifier = Modifier.hazeChild(
-                    state = hazeState,
-                    style = HazeDefaults.style(
-                        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.5f else 0.7f),
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .hazeChild(
+                        state = hazeState,
+                        style = HazeDefaults.style(
+                            backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.5f else 0.7f),
+                        )
                     )
-                )
             ) {
                 NowPlayingBar(
                     playbackConnection = playbackConnection,
@@ -388,17 +388,17 @@ fun ModernNavigationBar(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .height(64.dp)
+            .height(68.dp)
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(24.dp)
+                elevation = 12.dp,
+                shape = RoundedCornerShape(28.dp)
             )
-            .clip(RoundedCornerShape(24.dp)),
+            .clip(RoundedCornerShape(28.dp)),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 4.dp,
+        tonalElevation = 0.dp,
         border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            width = 0.5.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         )
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {

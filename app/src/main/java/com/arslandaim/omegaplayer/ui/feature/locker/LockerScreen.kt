@@ -51,7 +51,7 @@ import coil.request.videoFrameMillis
 import com.arslandaim.omegaplayer.data.LockerDatabase
 import com.arslandaim.omegaplayer.data.LockerSettings
 import com.arslandaim.omegaplayer.util.SecurityUtils
-import com.arslandaim.omegaplayer.ui.feature.library.formatDuration
+import com.arslandaim.omegaplayer.ui.feature.library.components.formatDuration
 import com.arslandaim.omegaplayer.ui.feature.settings.authenticateBiometric
 import com.arslandaim.omegaplayer.ui.common.ModernLoadingDialog
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
