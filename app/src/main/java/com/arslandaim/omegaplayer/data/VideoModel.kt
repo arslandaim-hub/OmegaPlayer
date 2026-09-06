@@ -7,7 +7,9 @@
 package com.arslandaim.omegaplayer.data
 
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 
+@Immutable
 data class VideoModel(
     val id: Long,
     val uri: Uri,

@@ -13,15 +13,13 @@ import com.arslandaim.omegaplayer.data.VideoModel
 import com.arslandaim.omegaplayer.util.Resource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,6 +28,7 @@ class MediaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : MediaRepository {
 
+    @OptIn(FlowPreview::class)
     override fun getAudios(): Flow<Resource<List<AudioModel>>> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
@@ -46,8 +45,9 @@ class MediaRepositoryImpl @Inject constructor(
         awaitClose {
             context.contentResolver.unregisterContentObserver(observer)
         }
-    }.flowOn(Dispatchers.IO)
+    }.debounce(300).flowOn(Dispatchers.IO)
 
+    @OptIn(FlowPreview::class)
     override fun getVideos(): Flow<Resource<List<VideoModel>>> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
@@ -64,7 +64,7 @@ class MediaRepositoryImpl @Inject constructor(
         awaitClose {
             context.contentResolver.unregisterContentObserver(observer)
         }
-    }.flowOn(Dispatchers.IO)
+    }.debounce(300).flowOn(Dispatchers.IO)
 
     override suspend fun refreshMedia() {
         fetchAudios()

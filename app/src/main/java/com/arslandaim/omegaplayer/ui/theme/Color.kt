@@ -9,26 +9,26 @@ package com.arslandaim.omegaplayer.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // OmegaPlayer Brand Colors
-val OmegaOrange = Color(0xFFFF6600)
-val OmegaBlue = Color(0xFF87CEEB)
-val OmegaBlack = Color(0xFF0F0F0F)
-val OmegaDarkGrey = Color(0xFF1A1A1A)
+val OmegaOrange = Color(0xFFFF5500)
+val OmegaBlue = Color(0xFF38BDF8)
+val OmegaBlack = Color(0xFF09090B)
+val OmegaDarkGrey = Color(0xFF18181B)
 
 // Dark Theme Palette
 val PrimaryDark = OmegaOrange
 val OnPrimaryDark = Color.Black
-val PrimaryContainerDark = Color(0xFF662200)
+val PrimaryContainerDark = Color(0xFF421500)
 val OnPrimaryContainerDark = Color(0xFFFFDBCF)
 
 val SecondaryDark = OmegaBlue
 val OnSecondaryDark = Color.Black
-val SecondaryContainerDark = Color(0xFF004D66)
-val OnSecondaryContainerDark = Color(0xFFBFE9FF)
+val SecondaryContainerDark = Color(0xFF02364D)
+val OnSecondaryContainerDark = Color(0xFFBAE6FD)
 
 val SurfaceDark = OmegaBlack
-val OnSurfaceDark = Color.White
-val SurfaceVariantDark = Color(0xFF49454F)
-val OnSurfaceVariantDark = Color(0xFFCAC4D0)
+val OnSurfaceDark = Color(0xFFF4F4F5)
+val SurfaceVariantDark = Color(0xFF27272A)
+val OnSurfaceVariantDark = Color(0xFFA1A1AA)
 
 // Light Theme Palette
 val PrimaryLight = OmegaOrange

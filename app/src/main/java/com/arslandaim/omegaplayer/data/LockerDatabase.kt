@@ -7,9 +7,11 @@
 package com.arslandaim.omegaplayer.data
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
+@Immutable
 @Entity(tableName = "locked_videos", indices = [Index("originFolderName")])
 data class LockedVideo(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -30,6 +32,7 @@ data class LockerSettings(
     val isBiometricEnabled: Boolean = false
 )
 
+@Immutable
 @Entity(tableName = "playlists")
 data class Playlist(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -37,6 +40,7 @@ data class Playlist(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+@Immutable
 @Entity(
     tableName = "playlist_items",
     foreignKeys = [
@@ -57,6 +61,7 @@ data class PlaylistItem(
     val addedAt: Long = System.currentTimeMillis()
 )
 
+@Immutable
 @Entity(tableName = "recent_playback", indices = [Index("lastPlayed")])
 data class RecentPlayback(
     @PrimaryKey val uri: String,

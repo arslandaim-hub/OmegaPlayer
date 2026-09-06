@@ -23,17 +23,17 @@ class OmegaPlayerApp : Application(), ImageLoaderFactory {
             }
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(0.30)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(this.cacheDir.resolve("image_cache"))
-                    .maxSizePercent(0.05)
+                    .maxSizeBytes(100 * 1024 * 1024) // 100 MB dedicated disk cache
                     .build()
             }
             .allowHardware(true)
-            .crossfade(true)
+            .crossfade(150)
             .build()
     }
 }

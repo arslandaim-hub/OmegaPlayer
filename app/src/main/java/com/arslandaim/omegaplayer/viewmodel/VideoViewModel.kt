@@ -24,6 +24,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import coil.size.Precision
+import com.arslandaim.omegaplayer.data.MediaSortOrder
 import com.arslandaim.omegaplayer.data.VideoModel
 import com.arslandaim.omegaplayer.data.RecentPlayback
 import com.arslandaim.omegaplayer.domain.usecase.media.GetVideosUseCase
@@ -142,6 +143,36 @@ class VideoViewModel @Inject constructor(
             _sleepTimerActive.value = false
         }
     }
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _sortOrder = MutableStateFlow(MediaSortOrder.DATE_DESC)
+    val sortOrder: StateFlow<MediaSortOrder> = _sortOrder.asStateFlow()
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun setSortOrder(order: MediaSortOrder) {
+        _sortOrder.value = order
+    }
+
+    val filteredVideos: StateFlow<List<VideoModel>> = combine(videos, searchQuery, sortOrder) { videoList, query, sort ->
+        var result = if (query.isBlank()) {
+            videoList
+        } else {
+            videoList.filter { it.name.contains(query, ignoreCase = true) }
+        }
+        when (sort) {
+            MediaSortOrder.DATE_DESC -> result
+            MediaSortOrder.DATE_ASC -> result.reversed()
+            MediaSortOrder.NAME_ASC -> result.sortedBy { it.name.lowercase() }
+            MediaSortOrder.NAME_DESC -> result.sortedByDescending { it.name.lowercase() }
+            MediaSortOrder.SIZE_DESC -> result.sortedByDescending { it.size }
+            MediaSortOrder.DURATION_DESC -> result.sortedByDescending { it.duration }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val folders: StateFlow<Map<String, Int>> = videos
         .map { videoList ->

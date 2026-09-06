@@ -307,13 +307,13 @@ fun MainScreen(
             ) {
                 NowPlayingBar(
                     playbackConnection = playbackConnection,
-                    onBarClick = {
-                        val currentItem = playbackConnection.currentMediaItem.value
-                        val uri = currentItem?.localConfiguration?.uri?.toString()
-                        if (uri != null) {
-                            val encodedUri = URLEncoder.encode(uri, StandardCharsets.UTF_8.toString())
-                            navController.navigate(Screen.AudioPlayer.createRoute(encodedUri))
-                        }
+                    onAudioClick = { uri ->
+                        val encodedUri = URLEncoder.encode(uri, StandardCharsets.UTF_8.toString())
+                        navController.navigate(Screen.AudioPlayer.createRoute(encodedUri))
+                    },
+                    onVideoClick = { uri ->
+                        val encodedUri = URLEncoder.encode(uri, StandardCharsets.UTF_8.toString())
+                        navController.navigate(Screen.Player.createRoute(encodedUri))
                     }
                 )
                 ModernNavigationBar(

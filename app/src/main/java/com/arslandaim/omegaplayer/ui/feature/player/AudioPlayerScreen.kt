@@ -201,6 +201,98 @@ fun AddToPlaylistDialog(
     )
 }
 
+@Composable
+fun AudioEqualizerDialog(
+    onDismiss: () -> Unit
+) {
+    var bassLevel by remember { mutableFloatStateOf(0.5f) }
+    var midLevel by remember { mutableFloatStateOf(0.5f) }
+    var trebleLevel by remember { mutableFloatStateOf(0.5f) }
+    var selectedPreset by remember { mutableStateOf("Flat") }
+
+    val presets = listOf("Flat", "Bass Boost", "Treble Boost", "Rock", "Pop", "Vocal")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Audio Equalizer", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Presets", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    presets.take(3).forEach { preset ->
+                        FilterChip(
+                            selected = selectedPreset == preset,
+                            onClick = {
+                                selectedPreset = preset
+                                when (preset) {
+                                    "Flat" -> { bassLevel = 0.5f; midLevel = 0.5f; trebleLevel = 0.5f }
+                                    "Bass Boost" -> { bassLevel = 0.85f; midLevel = 0.5f; trebleLevel = 0.4f }
+                                    "Treble Boost" -> { bassLevel = 0.4f; midLevel = 0.5f; trebleLevel = 0.85f }
+                                }
+                            },
+                            label = { Text(preset, fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    presets.drop(3).forEach { preset ->
+                        FilterChip(
+                            selected = selectedPreset == preset,
+                            onClick = {
+                                selectedPreset = preset
+                                when (preset) {
+                                    "Rock" -> { bassLevel = 0.75f; midLevel = 0.6f; trebleLevel = 0.75f }
+                                    "Pop" -> { bassLevel = 0.6f; midLevel = 0.7f; trebleLevel = 0.6f }
+                                    "Vocal" -> { bassLevel = 0.3f; midLevel = 0.8f; trebleLevel = 0.5f }
+                                }
+                            },
+                            label = { Text(preset, fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text("Bass (60Hz)", style = MaterialTheme.typography.labelSmall)
+                Slider(value = bassLevel, onValueChange = { bassLevel = it; selectedPreset = "Custom" })
+
+                Text("Mid (1kHz)", style = MaterialTheme.typography.labelSmall)
+                Slider(value = midLevel, onValueChange = { midLevel = it; selectedPreset = "Custom" })
+
+                Text("Treble (14kHz)", style = MaterialTheme.typography.labelSmall)
+                Slider(value = trebleLevel, onValueChange = { trebleLevel = it; selectedPreset = "Custom" })
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Apply")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioPlayerScreen(
@@ -254,6 +346,7 @@ fun AudioPlayerScreen(
     var duration by remember { mutableStateOf(controller?.duration?.coerceAtLeast(0L) ?: 0L) }
     var repeatMode by remember { mutableStateOf(controller?.repeatMode ?: Player.REPEAT_MODE_OFF) }
     var playbackSpeed by remember { mutableFloatStateOf(controller?.playbackParameters?.speed ?: 1.0f) }
+    var showEqualizerDialog by remember { mutableStateOf(false) }
     
     var dominantColor by remember { mutableStateOf(Color(0xFF1A1A1A)) }
     val animatedBgColor by animateColorAsState(
@@ -379,6 +472,12 @@ fun AudioPlayerScreen(
         } finally {
             player.removeListener(listener)
         }
+    }
+
+    if (showEqualizerDialog) {
+        AudioEqualizerDialog(
+            onDismiss = { showEqualizerDialog = false }
+        )
     }
 
     if (showSleepTimerDialog) {
@@ -546,18 +645,11 @@ fun AudioPlayerScreen(
                                 },
                                 leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null) }
                             )
-                            DropdownMenuItem(
+                                DropdownMenuItem(
                                 text = { Text("Equalizer") },
                                 onClick = { 
                                     showMoreOptions = false
-                                    try {
-                                        val eqIntent = Intent(android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-                                        eqIntent.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                                        eqIntent.putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
-                                        context.startActivity(eqIntent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "No equalizer app found", Toast.LENGTH_SHORT).show()
-                                    }
+                                    showEqualizerDialog = true
                                 },
                                 leadingIcon = { Icon(Icons.Default.GraphicEq, contentDescription = null) }
                             )
