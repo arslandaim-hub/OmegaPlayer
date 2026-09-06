@@ -71,7 +71,7 @@
 
 ---
 
-## 🚀 Highlights
+## Highlights
 
  -  Completely Offline
  -  No Ads
