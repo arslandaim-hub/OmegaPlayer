@@ -24,11 +24,10 @@
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎬 Silky Smooth Video Playback
+### Smooth Video Playback
 
--  Play 4K and Ultra HD videos without lag
 -  Smart buffering for smooth playback
 -  Gesture controls
    - Left: Brightness
@@ -45,7 +44,7 @@
 
 ---
 
-### 🎵 Premium Music Experience
+### Premium Music Experience
 
  -  High-fidelity audio playback
  -  Supports MP3, FLAC, WAV, AAC, OGG and more
@@ -54,7 +53,7 @@
 
 ---
 
-### 🔒 Private Media Vault
+### Private Media Vault
 
  -  Protect videos with a PIN or fingerprint
  -  Hidden from the gallery and other apps
@@ -63,7 +62,7 @@
 
 ---
 
-### 🎨 Modern Material Design
+### Modern Material Design
 
 - Material 3 interface
  -  Light & Dark theme
