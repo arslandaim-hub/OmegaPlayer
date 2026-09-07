@@ -37,9 +37,9 @@
 -  Background playback with screen off support
 
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (1).jpeg" width="180"/>
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (3).jpeg" width="180"/>
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/WhatsApp Image 2026-06-25 at 11.05.09 AM (2).jpeg" width="180"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/homescreen.jpeg" width="180"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/lockscreen.jpeg" width="180"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/settingsscreen.jpeg" width="180"/>
 </p>
 
 ---
