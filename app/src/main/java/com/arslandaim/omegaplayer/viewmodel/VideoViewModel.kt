@@ -83,7 +83,6 @@ class VideoViewModel @Inject constructor(
                 is Resource.Success -> {
                     _isLoading.value = false
                     _videoError.value = null
-                    preloadThumbnails(getApplication(), resource.data)
                 }
                 is Resource.Error -> {
                     _isLoading.value = false
@@ -229,23 +228,7 @@ class VideoViewModel @Inject constructor(
         }
     }
 
-    private fun preloadThumbnails(context: Context, videoList: List<VideoModel>) {
-        val imageLoader = context.imageLoader
-        viewModelScope.launch {
-            videoList.forEach { video ->
-                val request = ImageRequest.Builder(context)
-                    .data(video.uri)
-                    .videoFrameMillis(1000)
-                    .size(400)
-                    .precision(Precision.INEXACT)
-                    .diskCacheKey("thumb_${video.id}")
-                    .memoryCacheKey("thumb_${video.id}")
-                    .build()
-                imageLoader.enqueue(request)
-                delay(50)
-            }
-        }
-    }
+
 
     fun getVideosInFolder(folderName: String): List<VideoModel> {
         return videos.value.filter { (File(it.path).parentFile?.name ?: "Internal") == folderName }

@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.palette)
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation(libs.haze)
     implementation(libs.haze.materials)
     testImplementation(libs.junit)

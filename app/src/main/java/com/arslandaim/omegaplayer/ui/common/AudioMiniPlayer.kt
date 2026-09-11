@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,14 +69,20 @@ fun AudioMiniPlayer(
         }
     }
 
-    val artworkScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.04f else 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "artworkPulse"
-    )
+    val infiniteTransition = rememberInfiniteTransition(label = "artworkPulse")
+    val artworkScale by if (isPlaying) {
+        infiniteTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.04f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale"
+        )
+    } else {
+        remember { mutableFloatStateOf(1.0f) }
+    }
 
     val metadata = mediaItem.mediaMetadata
 
@@ -149,7 +156,10 @@ fun AudioMiniPlayer(
                 Box(
                     modifier = Modifier
                         .size(46.dp)
-                        .scale(artworkScale)
+                        .graphicsLayer {
+                            scaleX = artworkScale
+                            scaleY = artworkScale
+                        }
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center

@@ -60,13 +60,17 @@ fun RecentPlaybackItem(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (item.mediaType == "video") {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val imageRequest = remember(item.uri) {
+                    ImageRequest.Builder(context)
                         .data(Uri.parse(item.uri))
                         .videoFrameMillis(1000)
                         .size(400)
                         .precision(Precision.INEXACT)
-                        .build(),
+                        .build()
+                }
+                AsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
@@ -339,13 +343,19 @@ fun VideoGridItem(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val imageRequest = remember(video.id) {
+                    ImageRequest.Builder(context)
                         .data(video.uri)
                         .videoFrameMillis(1000)
                         .size(400)
                         .precision(Precision.INEXACT)
-                        .build(),
+                        .diskCacheKey("thumb_${video.id}")
+                        .memoryCacheKey("thumb_${video.id}")
+                        .build()
+                }
+                AsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -487,15 +497,19 @@ fun VideoListItem(
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(18.dp))
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
+                    val context = LocalContext.current
+                    val imageRequest = remember(video.id) {
+                        ImageRequest.Builder(context)
                             .data(video.uri)
                             .videoFrameMillis(1000)
                             .size(400)
                             .precision(Precision.INEXACT)
                             .diskCacheKey("thumb_${video.id}")
                             .memoryCacheKey("thumb_${video.id}")
-                            .build(),
+                            .build()
+                    }
+                    AsyncImage(
+                        model = imageRequest,
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
@@ -643,10 +657,14 @@ fun AudioListItem(
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                val context = LocalContext.current
+                val imageRequest = remember(albumArtUri) {
+                    ImageRequest.Builder(context)
                         .data(albumArtUri)
-                        .build(),
+                        .build()
+                }
+                AsyncImage(
+                    model = imageRequest,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,

@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.util.Log
+import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -60,7 +61,9 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.arslandaim.omegaplayer.R
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import kotlinx.coroutines.delay
@@ -108,13 +111,6 @@ fun PlayerScreen(
     }
     
 
-    // Smooth transition state
-    var isTransitionComplete by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(400)
-        isTransitionComplete = true
-    }
-
     // MX Player States (Local to this session)
     var volume by remember { mutableFloatStateOf(0.5f) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
@@ -135,7 +131,8 @@ fun PlayerScreen(
     var aspectRatio by remember { mutableIntStateOf(0) } // 0: Fit, 1: Zoom, 2: Stretch
     var isHardwareAccelerated by rememberSaveable { mutableStateOf(true) }
     
-    val currentVideo = remember(videoUri, viewModel.videos.collectAsState().value) {
+    val videosList by viewModel.videos.collectAsStateWithLifecycle()
+    val currentVideo = remember(videoUri, videosList) {
         viewModel.getCurrentVideo()
     }
     
@@ -297,49 +294,45 @@ fun PlayerScreen(
     val videoName = videoUri.substringAfterLast("/").substringBeforeLast(".")
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        if (isTransitionComplete) {
-            with(sharedTransitionScope) {
-                AndroidView(
-                    factory = { ctx ->
-                        val view = android.view.LayoutInflater.from(ctx).inflate(com.arslandaim.omegaplayer.R.layout.player_view, null) as PlayerView
-                        view.apply {
-                            player = mediaController
-                            // TextureView is already set via XML for smooth transitions
-                        }
-                    },
-                    update = { playerView ->
-                        playerView.player = mediaController
-                        playerView.resizeMode = when (aspectRatio) {
-                            1 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                            2 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-                            else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        }
-                    },
-                    onRelease = { playerView ->
-                        if (!currentBackgroundPlay.value) {
-                            playerView.player = null
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .sharedBounds(
-                            rememberSharedContentState(key = "video_bounds_$videoUri"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
-                            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
-                        )
-                        .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale,
-                            translationX = panOffset.x,
-                            translationY = panOffset.y
-                        )
-                        .transformable(state = transformState)
-                )
-            }
-        } else {
-            Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray.copy(alpha = 0.5f)))
+        with(sharedTransitionScope) {
+            AndroidView(
+                factory = { ctx ->
+                    val view = LayoutInflater.from(ctx).inflate(R.layout.player_view, null) as PlayerView
+                    view.apply {
+                        player = mediaController
+                        // TextureView is already set via XML for smooth transitions
+                    }
+                },
+                update = { playerView ->
+                    playerView.player = mediaController
+                    playerView.resizeMode = when (aspectRatio) {
+                        1 -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        2 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                        else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    }
+                },
+                onRelease = { playerView ->
+                    if (!currentBackgroundPlay.value) {
+                        playerView.player = null
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .sharedBounds(
+                        rememberSharedContentState(key = "video_bounds_$videoUri"),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                        resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds()
+                    )
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = panOffset.x,
+                        translationY = panOffset.y
+                    )
+                    .transformable(state = transformState)
+            )
         }
 
         // Gesture Overlay

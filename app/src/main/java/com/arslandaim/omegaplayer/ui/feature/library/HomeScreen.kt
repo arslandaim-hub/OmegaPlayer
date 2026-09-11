@@ -111,12 +111,6 @@ fun HomeScreen(
         }
     }
 
-    // Data loading logic
-    LaunchedEffect(Unit) {
-        viewModel.fetchVideos(context)
-        audioViewModel.fetchAudios(context)
-    }
-
     LaunchedEffect(initialTab) {
         if (initialTab != null && initialTab != selectedTab) {
             selectedTab = initialTab
@@ -124,8 +118,8 @@ fun HomeScreen(
     }
 
     // Data collection
-    val videos by viewModel.videos.collectAsState()
-    val isLoadingVideos by viewModel.isLoading.collectAsState()
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
+    val isLoadingVideos by viewModel.isLoading.collectAsStateWithLifecycle()
     val videoFolders by viewModel.folders.collectAsStateWithLifecycle()
     val selectedVideoFolder by viewModel.selectedFolder.collectAsStateWithLifecycle()
     val videosInFolder by viewModel.videosInSelectedFolder.collectAsStateWithLifecycle()

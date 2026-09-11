@@ -180,20 +180,20 @@ class MainActivity : FragmentActivity() {
                                     }
                                 ),
                                 enterTransition = {
-                                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + 
-                                    androidx.compose.animation.scaleIn(initialScale = 0.92f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                                    fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleIn(initialScale = 0.95f, animationSpec = tween(220, easing = FastOutSlowInEasing))
                                 },
                                 exitTransition = {
-                                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + 
-                                    androidx.compose.animation.scaleOut(targetScale = 0.92f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                                    fadeOut(animationSpec = tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleOut(targetScale = 0.95f, animationSpec = tween(220, easing = FastOutSlowInEasing))
                                 },
                                 popEnterTransition = {
-                                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
-                                    androidx.compose.animation.scaleIn(initialScale = 0.92f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                                    fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleIn(initialScale = 0.95f, animationSpec = tween(220, easing = FastOutSlowInEasing))
                                 },
                                 popExitTransition = {
-                                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing)) + 
-                                    androidx.compose.animation.scaleOut(targetScale = 0.92f, animationSpec = androidx.compose.animation.core.tween(400, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                                    fadeOut(animationSpec = tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleOut(targetScale = 0.95f, animationSpec = tween(220, easing = FastOutSlowInEasing))
                                 }
                             ) { backStackEntry ->
                                 val encodedUri = backStackEntry.arguments?.getString("videoUri") ?: ""
@@ -278,7 +278,6 @@ fun MainScreen(
 ) {
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
-    val hazeState = remember { HazeState() }
 
     LaunchedEffect(initialTab) {
         if (initialTab != null) {
@@ -298,12 +297,7 @@ fun MainScreen(
             Column(
                 modifier = Modifier
                     .navigationBarsPadding()
-                    .hazeChild(
-                        state = hazeState,
-                        style = HazeDefaults.style(
-                            backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.5f else 0.7f),
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = if (isDarkTheme) 0.9f else 0.95f))
             ) {
                 NowPlayingBar(
                     playbackConnection = playbackConnection,
@@ -327,9 +321,7 @@ fun MainScreen(
     ) { padding ->
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .haze(state = hazeState),
+            modifier = Modifier.fillMaxSize(),
             beyondViewportPageCount = 1
         ) { page ->
             when (page) {
