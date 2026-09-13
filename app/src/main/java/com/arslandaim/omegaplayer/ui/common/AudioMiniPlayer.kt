@@ -209,25 +209,40 @@ fun AudioMiniPlayer(
                             if (isPlaying) mediaController?.pause() else mediaController?.play()
                         },
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(38.dp)
                             .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                 shape = CircleShape
                             )
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            mediaController?.seekToNextMediaItem()
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SkipNext,
+                            contentDescription = "Next Track",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
                     IconButton(
                         onClick = onCloseClick,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
