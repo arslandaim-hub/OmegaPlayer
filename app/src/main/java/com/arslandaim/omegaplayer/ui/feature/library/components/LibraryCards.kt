@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.arslandaim.omegaplayer.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,7 +116,7 @@ fun RecentPlaybackItem(
                     color = if (item.mediaType == "video") Color.White else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if (item.mediaType == "video") "Video" else item.artist ?: "Audio",
+                    text = if (item.mediaType == "video") stringResource(R.string.media_type_video) else item.artist ?: stringResource(R.string.media_type_audio),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (item.mediaType == "video") Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -184,7 +186,7 @@ fun FolderListItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "$count items",
+                    text = stringResource(R.string.items_count, count),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -194,7 +196,7 @@ fun FolderListItem(
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More",
+                        contentDescription = stringResource(R.string.action_more),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(22.dp)
                     )
@@ -204,7 +206,7 @@ fun FolderListItem(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Move to Locker") },
+                        text = { Text(stringResource(R.string.menu_move_to_locker)) },
                         onClick = {
                             showMenu = false
                             onMoveToLocker()
@@ -212,7 +214,7 @@ fun FolderListItem(
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete Folder", color = MaterialTheme.colorScheme.error) },
+                        text = { Text(stringResource(R.string.menu_delete_folder), color = MaterialTheme.colorScheme.error) },
                         onClick = {
                             showMenu = false
                             onDelete()
@@ -269,7 +271,7 @@ fun FolderGridItem(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "$count items",
+                text = stringResource(R.string.items_count, count),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -590,7 +592,7 @@ fun VideoListItem(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text(if (isInPlaylistView) "Remove from Playlist" else "Add to Playlist") },
+                                text = { Text(if (isInPlaylistView) stringResource(R.string.menu_remove_from_playlist) else stringResource(R.string.menu_add_to_playlist)) },
                                 onClick = { 
                                     showMenu = false
                                     onPlaylistClick() 
@@ -603,7 +605,7 @@ fun VideoListItem(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                                 onClick = { 
                                     showMenu = false
                                     onDeleteClick() 
@@ -725,7 +727,7 @@ fun AudioListItem(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text(if (isInPlaylistView) "Remove from Playlist" else "Add to Playlist") },
+                        text = { Text(if (isInPlaylistView) stringResource(R.string.menu_remove_from_playlist) else stringResource(R.string.menu_add_to_playlist)) },
                         onClick = {
                             showMenu = false
                             onPlaylistClick()
@@ -733,7 +735,7 @@ fun AudioListItem(
                         leadingIcon = { Icon(if (isInPlaylistView) Icons.Default.PlaylistRemove else Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Move to Locker") },
+                        text = { Text(stringResource(R.string.menu_move_to_locker)) },
                         onClick = {
                             showMenu = false
                             onLockClick()
@@ -741,7 +743,7 @@ fun AudioListItem(
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                        text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
                         onClick = {
                             showMenu = false
                             onDeleteClick()

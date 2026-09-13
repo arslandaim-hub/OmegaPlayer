@@ -33,7 +33,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.arslandaim.omegaplayer.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,10 +70,11 @@ fun VideoMiniPlayer(
         }
     }
 
+    val defaultTitle = stringResource(R.string.video_playback_default_title)
     val uri = mediaItem.localConfiguration?.uri ?: Uri.EMPTY
     val title = mediaItem.mediaMetadata.title?.toString() 
         ?: uri.lastPathSegment 
-        ?: "Video Playback"
+        ?: defaultTitle
 
     Surface(
         modifier = modifier
@@ -127,7 +130,7 @@ fun VideoMiniPlayer(
                             .size(300)
                             .precision(Precision.INEXACT)
                             .build(),
-                        contentDescription = "Video Thumbnail",
+                        contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                         error = rememberVectorPainter(Icons.Default.Movie),
@@ -143,7 +146,7 @@ fun VideoMiniPlayer(
                         color = Color.Black.copy(alpha = 0.7f)
                     ) {
                         Text(
-                            text = "VIDEO",
+                            text = stringResource(R.string.video_badge),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
@@ -171,7 +174,7 @@ fun VideoMiniPlayer(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = if (isPlaying) "Playing in background" else "Paused",
+                        text = if (isPlaying) stringResource(R.string.playing_in_background) else stringResource(R.string.state_paused),
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontSize = 11.sp
                         ),
@@ -197,7 +200,7 @@ fun VideoMiniPlayer(
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            contentDescription = if (isPlaying) stringResource(R.string.state_paused) else stringResource(R.string.now_playing),
                             modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.secondary
                         )
@@ -211,7 +214,7 @@ fun VideoMiniPlayer(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Fullscreen,
-                            contentDescription = "Expand Fullscreen Video Player",
+                            contentDescription = stringResource(R.string.expand_video_player),
                             modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -223,7 +226,7 @@ fun VideoMiniPlayer(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close Mini Player",
+                            contentDescription = stringResource(R.string.close_mini_player),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )

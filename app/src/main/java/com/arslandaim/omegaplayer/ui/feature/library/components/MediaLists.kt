@@ -17,8 +17,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.arslandaim.omegaplayer.R
 import com.arslandaim.omegaplayer.data.AudioModel
 import com.arslandaim.omegaplayer.data.Playlist
 import com.arslandaim.omegaplayer.data.PlaylistItem
@@ -134,13 +136,13 @@ fun EmptyState(isSearching: Boolean, isFolderView: Boolean) {
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = if (isSearching) "No results found" else if (isFolderView) "No folders found" else "No media items",
+                text = if (isSearching) stringResource(R.string.no_results_found) else if (isFolderView) stringResource(R.string.no_folders_found) else stringResource(R.string.no_media_items),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = if (isSearching) "Try a different search term" else "Your media library is empty",
+                text = if (isSearching) stringResource(R.string.try_different_search) else stringResource(R.string.library_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -161,12 +163,12 @@ fun AddToPlaylistFromHomeDialog(
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("New Playlist") },
+            title = { Text(stringResource(R.string.menu_new_playlist)) },
             text = {
                 OutlinedTextField(
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
-                    label = { Text("Playlist Name") },
+                    label = { Text(stringResource(R.string.playlist_name_label)) },
                     singleLine = true
                 )
             },
@@ -176,17 +178,17 @@ fun AddToPlaylistFromHomeDialog(
                         onCreatePlaylist(newPlaylistName)
                         showCreateDialog = false
                     }
-                }) { Text("Create") }
+                }) { Text(stringResource(R.string.action_create)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showCreateDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add to Playlist") },
+        title = { Text(stringResource(R.string.menu_add_to_playlist)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                 Button(
@@ -196,13 +198,13 @@ fun AddToPlaylistFromHomeDialog(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create New Playlist")
+                    Text(stringResource(R.string.menu_new_playlist))
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 if (playlists.isEmpty()) {
-                    Text("No playlists yet", modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text(stringResource(R.string.no_playlists_yet), modifier = Modifier.align(Alignment.CenterHorizontally))
                 } else {
                     LazyColumn {
                         items(playlists) { playlist ->
@@ -218,7 +220,7 @@ fun AddToPlaylistFromHomeDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         }
     )
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -419,9 +420,9 @@ fun ModernNavigationBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val tabs = listOf(
-                    Triple("Home", Icons.Default.Home, 0),
-                    Triple("Locker", Icons.Default.Lock, 1),
-                    Triple("Settings", Icons.Default.Settings, 2)
+                    Triple(stringResource(R.string.nav_home), Icons.Default.Home, 0),
+                    Triple(stringResource(R.string.nav_locker), Icons.Default.Lock, 1),
+                    Triple(stringResource(R.string.nav_settings), Icons.Default.Settings, 2)
                 )
 
                 tabs.forEach { (label, icon, index) ->

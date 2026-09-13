@@ -38,7 +38,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.arslandaim.omegaplayer.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -181,7 +183,7 @@ fun AudioMiniPlayer(
                         .padding(horizontal = 12.dp)
                 ) {
                     Text(
-                        text = metadata.title?.toString() ?: "Unknown Track",
+                        text = metadata.title?.toString() ?: stringResource(R.string.unknown_track),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -191,7 +193,7 @@ fun AudioMiniPlayer(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = metadata.artist?.toString() ?: "Unknown Artist",
+                        text = metadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontSize = 12.sp
                         ),
@@ -217,7 +219,7 @@ fun AudioMiniPlayer(
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            contentDescription = if (isPlaying) stringResource(R.string.state_paused) else stringResource(R.string.now_playing),
                             modifier = Modifier.size(22.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -234,7 +236,7 @@ fun AudioMiniPlayer(
                     ) {
                         Icon(
                             imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Next Track",
+                            contentDescription = stringResource(R.string.next_track),
                             modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -246,7 +248,7 @@ fun AudioMiniPlayer(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close Mini Player",
+                            contentDescription = stringResource(R.string.close_mini_player),
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )

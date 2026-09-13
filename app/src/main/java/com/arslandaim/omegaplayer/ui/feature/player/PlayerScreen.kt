@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -642,17 +643,17 @@ fun PlayerScreen(
         if (showInfoDialog && currentVideo != null) {
             AlertDialog(
                 onDismissRequest = { showInfoDialog = false },
-                title = { Text("Video Information", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.video_info), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InfoRow("Name", currentVideo.name)
-                        InfoRow("Size", "${currentVideo.size / (1024 * 1024)} MB")
-                        InfoRow("Path", currentVideo.path)
-                        InfoRow("Duration", formatDuration(currentVideo.duration))
+                        InfoRow(stringResource(R.string.info_name), currentVideo.name)
+                        InfoRow(stringResource(R.string.info_size), "${currentVideo.size / (1024 * 1024)} MB")
+                        InfoRow(stringResource(R.string.info_path), currentVideo.path)
+                        InfoRow(stringResource(R.string.info_duration), formatDuration(currentVideo.duration))
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { showInfoDialog = false }) { Text("Close") }
+                    TextButton(onClick = { showInfoDialog = false }) { Text(stringResource(R.string.action_close)) }
                 },
                 shape = RoundedCornerShape(28.dp)
             )
@@ -689,7 +690,7 @@ fun PlaybackErrorOverlay(error: String, onRetry: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "Playback Error",
+                stringResource(R.string.playback_error),
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
@@ -709,7 +710,7 @@ fun PlaybackErrorOverlay(error: String, onRetry: () -> Unit) {
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Retry Playback")
+                Text(stringResource(R.string.action_retry))
             }
         }
     }

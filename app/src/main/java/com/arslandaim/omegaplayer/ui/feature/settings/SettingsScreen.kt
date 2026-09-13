@@ -23,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoMode
@@ -36,12 +37,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arslandaim.omegaplayer.R
 import com.arslandaim.omegaplayer.data.AppTheme
 import com.arslandaim.omegaplayer.data.LockerDatabase
 import com.arslandaim.omegaplayer.viewmodel.LockerViewModel
@@ -85,6 +90,10 @@ fun SettingsScreen(
     val dynamicColorEnabled by themeViewModel.dynamicColor.collectAsState()
     val isHistoryPaused by videoViewModel.isHistoryPaused.collectAsStateWithLifecycle()
 
+    val setupPinFirstToast = stringResource(R.string.toast_setup_pin_first)
+    val pinUpdatedToast = stringResource(R.string.toast_pin_updated)
+    val biometricUpdatedToast = stringResource(R.string.toast_biometric_updated)
+
     var showChangePinDialog by remember { mutableStateOf(false) }
     var showSecurityVerification by remember { mutableStateOf(false) }
     var showAboutDeveloperDialog by remember { mutableStateOf(false) }
@@ -123,7 +132,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("App Settings", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.settings_title), fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
@@ -140,7 +149,7 @@ fun SettingsScreen(
                 .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Appearance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.section_appearance), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -148,15 +157,20 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("App Theme", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.app_theme), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(12.dp))
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         AppTheme.entries.forEachIndexed { index, theme ->
+                            val themeLabel = when (theme) {
+                                AppTheme.SYSTEM -> stringResource(R.string.theme_system)
+                                AppTheme.LIGHT -> stringResource(R.string.theme_light)
+                                AppTheme.DARK -> stringResource(R.string.theme_dark)
+                            }
                             SegmentedButton(
                                 selected = currentTheme == theme,
                                 onClick = { themeViewModel.setTheme(theme) },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = AppTheme.entries.size),
-                                label = { Text(theme.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                                label = { Text(themeLabel) }
                             )
                         }
                     }
@@ -164,8 +178,8 @@ fun SettingsScreen(
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         Spacer(modifier = Modifier.height(16.dp))
                         ListItem(
-                            headlineContent = { Text("Dynamic Color", fontWeight = FontWeight.Medium) },
-                            supportingContent = { Text("Use Material You colors from your wallpaper") },
+                            headlineContent = { Text(stringResource(R.string.dynamic_color), fontWeight = FontWeight.Medium) },
+                            supportingContent = { Text(stringResource(R.string.dynamic_color_sub)) },
                             trailingContent = {
                                 Switch(
                                     checked = dynamicColorEnabled,
@@ -178,7 +192,7 @@ fun SettingsScreen(
                 }
             }
 
-            Text("History & Privacy", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.section_privacy), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -186,8 +200,8 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 ListItem(
-                    headlineContent = { Text("Watch History", fontWeight = FontWeight.Medium) },
-                    supportingContent = { Text(if (isHistoryPaused) "History recording is paused" else "Recording playback history") },
+                    headlineContent = { Text(stringResource(R.string.watch_history_setting), fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(if (isHistoryPaused) stringResource(R.string.history_paused_sub) else stringResource(R.string.history_active_sub)) },
                     trailingContent = {
                         Switch(
                             checked = !isHistoryPaused,
@@ -198,7 +212,7 @@ fun SettingsScreen(
                 )
             }
 
-            Text("Security", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.section_security), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             
             // PIN Card
             Card(
@@ -207,8 +221,8 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 ListItem(
-                    headlineContent = { Text("Change Locker PIN", fontWeight = FontWeight.Medium) },
-                    supportingContent = { Text("Update your 4-digit security code") },
+                    headlineContent = { Text(stringResource(R.string.change_locker_pin), fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(stringResource(R.string.change_pin_sub)) },
                     leadingContent = { 
                         Surface(
                             modifier = Modifier.size(40.dp),
@@ -224,14 +238,14 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 if (settings == null) {
-                                    Toast.makeText(context, "Setup PIN first", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, setupPinFirstToast, Toast.LENGTH_SHORT).show()
                                 } else {
                                     showSecurityVerification = true
                                 }
                             },
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Change")
+                            Text(stringResource(R.string.action_change))
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent)
@@ -245,9 +259,9 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 ListItem(
-                    headlineContent = { Text("Fingerprint Unlock", fontWeight = FontWeight.Medium) },
+                    headlineContent = { Text(stringResource(R.string.fingerprint_unlock), fontWeight = FontWeight.Medium) },
                     supportingContent = { 
-                        Text(if (isBiometricSupported) "Enable biometric access for locker" else "Device doesn't support biometric") 
+                        Text(if (isBiometricSupported) stringResource(R.string.biometric_supported_sub) else stringResource(R.string.biometric_unsupported_sub)) 
                     },
                     leadingContent = { 
                         Surface(
@@ -272,7 +286,7 @@ fun SettingsScreen(
                                         scope.launch {
                                             settings?.let {
                                                 dao.saveSettings(it.copy(isBiometricEnabled = isEnabled))
-                                                Toast.makeText(context, "Biometric updated", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, biometricUpdatedToast, Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }, { errorCode, error ->
@@ -291,7 +305,7 @@ fun SettingsScreen(
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Text("Storage Management", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.section_storage), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -299,9 +313,9 @@ fun SettingsScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     ListItem(
-                        headlineContent = { Text("Automatic Locking", fontWeight = FontWeight.Medium) },
+                        headlineContent = { Text(stringResource(R.string.auto_locking), fontWeight = FontWeight.Medium) },
                         supportingContent = { 
-                            Text(if (canManageMedia) "Requires Media Management permission" else "Requires 'Media Management' permission")
+                            Text(stringResource(R.string.media_mgmt_permission))
                         },
                         leadingContent = { 
                             Surface(
@@ -332,7 +346,7 @@ fun SettingsScreen(
                 }
             }
 
-            Text("About", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.section_about), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
             // About Developer Card
             Card(
@@ -341,8 +355,8 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 ListItem(
-                    headlineContent = { Text("About Developer", fontWeight = FontWeight.Medium) },
-                    supportingContent = { Text("Information about the app developer") },
+                    headlineContent = { Text(stringResource(R.string.about_developer), fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(stringResource(R.string.about_dev_sub)) },
                     leadingContent = { 
                         Surface(
                             modifier = Modifier.size(40.dp),
@@ -366,8 +380,8 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 ListItem(
-                    headlineContent = { Text("View Source Code", fontWeight = FontWeight.Medium) },
-                    supportingContent = { Text("Check the app source-code on GitHub") },
+                    headlineContent = { Text(stringResource(R.string.view_source_code), fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(stringResource(R.string.view_source_sub)) },
                     leadingContent = { 
                         Surface(
                             modifier = Modifier.size(40.dp),
@@ -391,7 +405,7 @@ fun SettingsScreen(
             
             // Version Info
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("Omega Player v:$versionName", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.version_format, versionName ?: ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
@@ -411,11 +425,11 @@ fun SettingsScreen(
         if (showChangePinDialog) {
             ChangePinModernDialog(
                 onDismiss = { showChangePinDialog = false },
-                onConfirm = { newPin ->
+                onConfirm = { newPin: String ->
                     scope.launch {
                         settings?.let {
                             dao.saveSettings(it.copy(pin = newPin))
-                            Toast.makeText(context, "PIN updated successfully", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, pinUpdatedToast, Toast.LENGTH_SHORT).show()
                             showChangePinDialog = false
                         }
                     }
@@ -426,13 +440,13 @@ fun SettingsScreen(
         if (showAboutDeveloperDialog) {
             AlertDialog(
                 onDismissRequest = { showAboutDeveloperDialog = false },
-                title = { Text("About Developer", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.about_developer), fontWeight = FontWeight.Bold) },
                 text = {
-                    Text("Developer: Arsalan Daim Shar.\n"+"Student of BS Artificial Intelligence.")
+                    Text(stringResource(R.string.developer_info))
                 },
                 confirmButton = {
                     TextButton(onClick = { showAboutDeveloperDialog = false }) {
-                        Text("Close")
+                        Text(stringResource(R.string.action_close))
                     }
                 },
                 shape = RoundedCornerShape(28.dp)
@@ -459,9 +473,9 @@ fun authenticateBiometric(
     })
 
     val promptInfo = BiometricPrompt.PromptInfo.Builder()
-        .setTitle("Biometric Authentication")
-        .setSubtitle("Confirm your identity")
-        .setNegativeButtonText("Cancel")
+        .setTitle(activity.getString(R.string.fingerprint_unlock))
+        .setSubtitle(activity.getString(R.string.verify_identity))
+        .setNegativeButtonText(activity.getString(R.string.action_cancel))
         .build()
 
     biometricPrompt.authenticate(promptInfo)
@@ -476,18 +490,19 @@ fun SecurityVerificationDialog(
 ) {
     var answerInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    val incorrectAnswerMessage = stringResource(R.string.incorrect_answer)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Verify Identity", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.verify_identity), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Please answer your security question to continue.", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.security_question_prompt), style = MaterialTheme.typography.bodyMedium)
                 Text(question, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                 OutlinedTextField(
                     value = answerInput,
                     onValueChange = { answerInput = it },
-                    label = { Text("Security Answer") },
+                    label = { Text(stringResource(R.string.security_answer_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -500,17 +515,17 @@ fun SecurityVerificationDialog(
                     if (answerInput.trim().equals(answer.trim(), ignoreCase = true)) {
                         onSuccess()
                     } else {
-                        error = "Incorrect answer"
+                        error = incorrectAnswerMessage
                     }
                 },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Verify")
+                Text(stringResource(R.string.action_verify))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         shape = RoundedCornerShape(28.dp)
@@ -522,14 +537,14 @@ fun ChangePinModernDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var newPin by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Security PIN", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.new_security_pin), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Enter a new 4-digit code to protect your videos.", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.enter_new_pin_prompt), style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = newPin,
                     onValueChange = { if (it.length <= 4) newPin = it },
-                    label = { Text("4-digit PIN") },
+                    label = { Text(stringResource(R.string.pin_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
@@ -542,12 +557,12 @@ fun ChangePinModernDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                 onClick = { if (newPin.length == 4) onConfirm(newPin) },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Update")
+                Text(stringResource(R.string.action_update))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         shape = RoundedCornerShape(28.dp)

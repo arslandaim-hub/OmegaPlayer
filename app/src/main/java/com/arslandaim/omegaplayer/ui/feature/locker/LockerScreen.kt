@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arslandaim.omegaplayer.R
 import coil.compose.AsyncImage
 import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
@@ -149,12 +151,12 @@ fun LockerAuthScreen(
 //        )
 //        Spacer(modifier = Modifier.height(24.dp))
         Text(
-            "Private Vault",
+            stringResource(R.string.locker_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.ExtraBold
         )
         Text(
-            "Enter PIN to access your hidden content",
+            stringResource(R.string.enter_pin_sub),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -329,7 +331,7 @@ fun LockerSetupScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Setup Vault",
+            text = stringResource(R.string.setup_pin_title),
             style = MaterialTheme.typography.headlineLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
                 brush = Brush.linearGradient(
@@ -342,7 +344,7 @@ fun LockerSetupScreen(
             )
         )
         Text(
-            "Secure your private media with a PIN",
+            stringResource(R.string.setup_pin_sub),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -358,7 +360,7 @@ fun LockerSetupScreen(
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { if (it.length <= 4) pin = it },
-                    label = { Text("4-digit PIN") },
+                    label = { Text(stringResource(R.string.pin_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
@@ -368,8 +370,8 @@ fun LockerSetupScreen(
                 OutlinedTextField(
                     value = question,
                     onValueChange = { question = it },
-                    label = { Text("Security Question") },
-                    placeholder = { Text("e.g. First pet's name") },
+                    label = { Text(stringResource(R.string.security_question_title)) },
+                    placeholder = { Text(stringResource(R.string.security_question_sub)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -377,7 +379,7 @@ fun LockerSetupScreen(
                 OutlinedTextField(
                     value = answer,
                     onValueChange = { answer = it },
-                    label = { Text("Answer") },
+                    label = { Text(stringResource(R.string.your_answer_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -399,7 +401,7 @@ fun LockerSetupScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         ) {
-            Text("Initialize Vault", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.setup_pin_title), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -696,7 +698,7 @@ fun EmptyVaultState() {
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Vault is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.locker_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

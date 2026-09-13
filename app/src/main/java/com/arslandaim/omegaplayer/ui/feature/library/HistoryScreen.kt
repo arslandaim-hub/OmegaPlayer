@@ -30,12 +30,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import coil.size.Precision
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arslandaim.omegaplayer.R
 import com.arslandaim.omegaplayer.data.RecentPlayback
 import com.arslandaim.omegaplayer.viewmodel.VideoViewModel
 import java.net.URLEncoder
@@ -55,8 +57,8 @@ fun HistoryScreen(
     if (showClearConfirm) {
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
-            title = { Text("Clear History") },
-            text = { Text("Are you sure you want to clear all your watch history?") },
+            title = { Text(stringResource(R.string.clear_history_title)) },
+            text = { Text(stringResource(R.string.clear_history_msg)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -65,12 +67,12 @@ fun HistoryScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Clear All")
+                    Text(stringResource(R.string.clear_all))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -79,22 +81,22 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Watch History", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.watch_history), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.toggleHistoryPause(!isPaused) }) {
                         Icon(
                             imageVector = if (isPaused) Icons.Default.PlayCircle else Icons.Default.PauseCircle,
-                            contentDescription = if (isPaused) "Resume History" else "Pause History",
+                            contentDescription = if (isPaused) stringResource(R.string.resume_history) else stringResource(R.string.pause_history),
                             tint = if (isPaused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = { showClearConfirm = true }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "Clear All", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.clear_all), tint = MaterialTheme.colorScheme.error)
                     }
                 }
             )
@@ -110,7 +112,7 @@ fun HistoryScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("No history yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.no_history_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
@@ -188,7 +190,7 @@ fun HistoryItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (item.mediaType == "video") "Video" else item.artist ?: "Audio",
+                    text = if (item.mediaType == "video") stringResource(R.string.media_type_video) else item.artist ?: stringResource(R.string.media_type_audio),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

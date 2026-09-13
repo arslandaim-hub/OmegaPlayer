@@ -28,7 +28,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.arslandaim.omegaplayer.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -76,11 +78,11 @@ fun SleepTimerDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Sleep Timer") },
+        title = { Text(stringResource(R.string.sleep_timer)) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!stopAfterCurrent) {
-                    Text("${minutes} minutes")
+                    Text(stringResource(R.string.minutes_format, minutes))
                     Slider(
                         value = minutes.toFloat(),
                         onValueChange = { minutes = it.toInt() },
@@ -98,7 +100,7 @@ fun SleepTimerDialog(
                         onCheckedChange = { onStopAfterCurrentToggle(it) }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Stop after current track")
+                    Text(stringResource(R.string.stop_after_current))
                 }
 
                 if (currentMinutes > 0 || stopAfterCurrent) {
@@ -106,7 +108,7 @@ fun SleepTimerDialog(
                         onConfirm(0)
                         onStopAfterCurrentToggle(false)
                     }) {
-                        Text("Turn Off", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_turn_off), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -114,13 +116,13 @@ fun SleepTimerDialog(
         confirmButton = {
             if (!stopAfterCurrent) {
                 Button(onClick = { onConfirm(minutes) }) {
-                    Text("Set")
+                    Text(stringResource(R.string.action_set))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -139,12 +141,12 @@ fun AddToPlaylistDialog(
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("New Playlist") },
+            title = { Text(stringResource(R.string.menu_new_playlist)) },
             text = {
                 OutlinedTextField(
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
-                    label = { Text("Playlist Name") },
+                    label = { Text(stringResource(R.string.playlist_name_label)) },
                     singleLine = true
                 )
             },
@@ -154,17 +156,17 @@ fun AddToPlaylistDialog(
                         onCreatePlaylist(newPlaylistName)
                         showCreateDialog = false
                     }
-                }) { Text("Create") }
+                }) { Text(stringResource(R.string.action_create)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showCreateDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         )
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add to Playlist") },
+        title = { Text(stringResource(R.string.menu_add_to_playlist)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                 Button(
@@ -174,13 +176,13 @@ fun AddToPlaylistDialog(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create New Playlist")
+                    Text(stringResource(R.string.menu_new_playlist))
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 if (playlists.isEmpty()) {
-                    Text("No playlists yet", modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text(stringResource(R.string.no_playlists_yet), modifier = Modifier.align(Alignment.CenterHorizontally))
                 } else {
                     LazyColumn {
                         items(playlists) { playlist ->
@@ -196,7 +198,7 @@ fun AddToPlaylistDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         }
     )
 }
@@ -210,7 +212,14 @@ fun AudioEqualizerDialog(
     var trebleLevel by remember { mutableFloatStateOf(0.5f) }
     var selectedPreset by remember { mutableStateOf("Flat") }
 
-    val presets = listOf("Flat", "Bass Boost", "Treble Boost", "Rock", "Pop", "Vocal")
+    val presetFlat = stringResource(R.string.preset_flat)
+    val presetBassBoost = stringResource(R.string.preset_bass_boost)
+    val presetTrebleBoost = stringResource(R.string.preset_treble_boost)
+    val presetRock = stringResource(R.string.preset_rock)
+    val presetPop = stringResource(R.string.preset_pop)
+    val presetVocal = stringResource(R.string.preset_vocal)
+
+    val presets = listOf(presetFlat, presetBassBoost, presetTrebleBoost, presetRock, presetPop, presetVocal)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -218,7 +227,7 @@ fun AudioEqualizerDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Audio Equalizer", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.audio_equalizer), fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -226,7 +235,7 @@ fun AudioEqualizerDialog(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("Presets", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.presets), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -238,9 +247,9 @@ fun AudioEqualizerDialog(
                             onClick = {
                                 selectedPreset = preset
                                 when (preset) {
-                                    "Flat" -> { bassLevel = 0.5f; midLevel = 0.5f; trebleLevel = 0.5f }
-                                    "Bass Boost" -> { bassLevel = 0.85f; midLevel = 0.5f; trebleLevel = 0.4f }
-                                    "Treble Boost" -> { bassLevel = 0.4f; midLevel = 0.5f; trebleLevel = 0.85f }
+                                    presetFlat -> { bassLevel = 0.5f; midLevel = 0.5f; trebleLevel = 0.5f }
+                                    presetBassBoost -> { bassLevel = 0.85f; midLevel = 0.5f; trebleLevel = 0.4f }
+                                    presetTrebleBoost -> { bassLevel = 0.4f; midLevel = 0.5f; trebleLevel = 0.85f }
                                 }
                             },
                             label = { Text(preset, fontSize = 11.sp) }
@@ -258,9 +267,9 @@ fun AudioEqualizerDialog(
                             onClick = {
                                 selectedPreset = preset
                                 when (preset) {
-                                    "Rock" -> { bassLevel = 0.75f; midLevel = 0.6f; trebleLevel = 0.75f }
-                                    "Pop" -> { bassLevel = 0.6f; midLevel = 0.7f; trebleLevel = 0.6f }
-                                    "Vocal" -> { bassLevel = 0.3f; midLevel = 0.8f; trebleLevel = 0.5f }
+                                    presetRock -> { bassLevel = 0.75f; midLevel = 0.6f; trebleLevel = 0.75f }
+                                    presetPop -> { bassLevel = 0.6f; midLevel = 0.7f; trebleLevel = 0.6f }
+                                    presetVocal -> { bassLevel = 0.3f; midLevel = 0.8f; trebleLevel = 0.5f }
                                 }
                             },
                             label = { Text(preset, fontSize = 11.sp) }
@@ -270,24 +279,24 @@ fun AudioEqualizerDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text("Bass (60Hz)", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.bass_label), style = MaterialTheme.typography.labelSmall)
                 Slider(value = bassLevel, onValueChange = { bassLevel = it; selectedPreset = "Custom" })
 
-                Text("Mid (1kHz)", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.mid_label), style = MaterialTheme.typography.labelSmall)
                 Slider(value = midLevel, onValueChange = { midLevel = it; selectedPreset = "Custom" })
 
-                Text("Treble (14kHz)", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.treble_label), style = MaterialTheme.typography.labelSmall)
                 Slider(value = trebleLevel, onValueChange = { trebleLevel = it; selectedPreset = "Custom" })
             }
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("Apply")
+                Text(stringResource(R.string.action_apply))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.action_close))
             }
         }
     )
@@ -590,25 +599,25 @@ fun AudioPlayerScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Now Playing", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.White) },
+                    title = { Text(stringResource(R.string.now_playing), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.White) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back), tint = Color.White)
                         }
                     },
                     actions = {
                         IconButton(onClick = { showQueueSheet = true }) {
-                            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Queue", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.queue), tint = Color.White)
                         }
                         IconButton(onClick = { showMoreOptions = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_more), tint = Color.White)
                         }
                         DropdownMenu(
                             expanded = showMoreOptions,
                             onDismissRequest = { showMoreOptions = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Add to Playlist") },
+                                text = { Text(stringResource(R.string.menu_add_to_playlist)) },
                                 onClick = { 
                                     showMoreOptions = false
                                     showPlaylistDialog = true
@@ -617,9 +626,9 @@ fun AudioPlayerScreen(
                             )
                             DropdownMenuItem(
                                 text = { 
-                                    val text = if (stopAfterCurrent) "Sleep: End of Track" 
-                                              else if (sleepTimerActive) "Sleep Timer: ${formatTime(sleepTimerTimeLeft)}" 
-                                              else "Sleep Timer"
+                                    val text = if (stopAfterCurrent) stringResource(R.string.sleep_timer_end_of_track)
+                                              else if (sleepTimerActive) stringResource(R.string.sleep_timer_format, formatTime(sleepTimerTimeLeft)) 
+                                              else stringResource(R.string.sleep_timer)
                                     Text(text)
                                 },
                                 onClick = { 
@@ -629,7 +638,7 @@ fun AudioPlayerScreen(
                                 leadingIcon = { Icon(Icons.Default.Timer, contentDescription = null, tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary else Color.White) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Playback Speed (${playbackSpeed}x)") },
+                                text = { Text(stringResource(R.string.playback_speed_format, playbackSpeed.toString())) },
                                 onClick = { 
                                     // Cycles speeds
                                     val nextSpeed = when(playbackSpeed) {
@@ -646,7 +655,7 @@ fun AudioPlayerScreen(
                                 leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null) }
                             )
                                 DropdownMenuItem(
-                                text = { Text("Equalizer") },
+                                text = { Text(stringResource(R.string.equalizer)) },
                                 onClick = { 
                                     showMoreOptions = false
                                     showEqualizerDialog = true
@@ -845,7 +854,7 @@ fun AudioPlayerScreen(
         ) {
             Column(modifier = Modifier.fillMaxHeight(0.6f).padding(16.dp)) {
                 Text(
-                    "Up Next",
+                    stringResource(R.string.up_next),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(bottom = 16.dp)

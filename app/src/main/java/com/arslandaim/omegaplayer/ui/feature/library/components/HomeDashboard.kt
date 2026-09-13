@@ -25,7 +25,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.arslandaim.omegaplayer.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,8 +82,13 @@ fun HomeDashboard(
                         color = background
                     ) {
                         Box(contentAlignment = Alignment.Center) {
+                            val tabLabel = when (tab) {
+                                MediaTab.VIDEOS -> stringResource(R.string.tab_videos)
+                                MediaTab.AUDIOS -> stringResource(R.string.tab_audios)
+                                MediaTab.PLAYLISTS -> stringResource(R.string.tab_playlists)
+                            }
                             Text(
-                                text = tab.name.lowercase().replaceFirstChar { it.uppercase() },
+                                text = tabLabel,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = contentColor
@@ -129,7 +136,7 @@ fun LinearStorageVisualization(stats: StorageStats, modifier: Modifier = Modifie
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Storage",
+                    text = stringResource(R.string.storage_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -162,8 +169,8 @@ fun LinearStorageVisualization(stats: StorageStats, modifier: Modifier = Modifie
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StorageLegendItemSmall("Videos", videoColor)
-                StorageLegendItemSmall("Audios", audioColor)
+                StorageLegendItemSmall(stringResource(R.string.tab_videos), videoColor)
+                StorageLegendItemSmall(stringResource(R.string.tab_audios), audioColor)
                 StorageLegendItemSmall("Other", otherColor)
                 StorageLegendItemSmall("Free", Color(0xFFE4E4E7))
             }
@@ -196,12 +203,12 @@ fun RecentPlaybackSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Continue Watching",
+                text = stringResource(R.string.watch_history),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             TextButton(onClick = onViewAllClick) {
-                Text("View All", color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.view_all), color = MaterialTheme.colorScheme.primary)
             }
         }
         LazyRow(
